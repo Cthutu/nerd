@@ -7051,6 +7051,12 @@ internal void llvm_bind_local_value(LlvmFunctionContext* ctx,
 
     LlvmValue local_value  = value;
     local_value.type_index = llvm_local_type(ctx, local_index);
+    // A void success binder records a matched variant, not a stored payload.
+    // In particular, debug builds must not materialise an `alloca void`.
+    if (llvm_type_is_void(ctx->sema, local_value.type_index)) {
+        llvm_set_local_value(ctx, local_index, local_value);
+        return;
+    }
     if (ctx->debug != NULL || llvm_local_is_assigned(ctx, local_index)) {
         LlvmLocalSlot* slot =
             llvm_ensure_local_slot(ctx, local_index, local_value.type_index);

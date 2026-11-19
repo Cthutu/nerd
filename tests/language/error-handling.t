@@ -760,6 +760,44 @@ Undo registration, failure cleanup and success paths passed
 
 ¬
 
+=== case: void-success-pattern-binders ===
+make_result :: fn (fail: bool) -> void\string {
+    on fail => return "failed"!
+}
+
+make_optional :: fn (present: bool) -> ?void {
+    on !present => return nil
+}
+
+main :: fn () -> i32 {
+    total := 0
+    on make_result(no) {
+        _success => { total += 1 }
+        _error! => { total += 100 }
+    }
+    on make_result(yes) {
+        _success => { total += 100 }
+        error! => { on error == "failed" => total += 2 }
+    }
+    on make_optional(yes) {
+        _present => { total += 4 }
+        else => { total += 100 }
+    }
+    on make_optional(no) {
+        _present => { total += 100 }
+        else => { total += 8 }
+    }
+    prn($"void-binders={total}")
+    return total - 15
+}
+¬
+0
+¬
+void-binders=15
+¬
+
+¬
+
 === case: 276-run-propagate-call-once ===
 Failure :: enum {
     Bad

@@ -74,6 +74,12 @@ the complete type for invalid/unfinished source instead of splitting its
 element type into another statement. This does not make array types valid
 runtime initialisers; newline-separated array literals keep their boundaries.
 
+LLVM and C pattern binders for void optional/result success payloads retain
+their semantic binding without allocating or storing a payload. Debug
+materialisation must not introduce `alloca void`, and generated C must not refer
+to absent void payload fields. Success/failure dispatch still evaluates the
+subject once and selects branches normally.
+
 Missing-return validation distinguishes explicit `void` from value-producing
 return types. Both implicit and explicit `void` bodies may fall through; HIR and
 the backends emit the normal void exit and deferred cleanup. Optional/result

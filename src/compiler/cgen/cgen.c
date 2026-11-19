@@ -1210,6 +1210,10 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
         return "true";
     }
     if (p->kind == HIR_PATTERN_Bind) {
+        // Void success variants have no payload field or local storage.
+        if (cgen_void(c, value.type)) {
+            return "true";
+        }
         cgen_local(c, p->local_index, value.type);
         CGEN_OUT("%s=%s;\n", cgen_local_name(c, p->local_index), value.text);
         return "true";
