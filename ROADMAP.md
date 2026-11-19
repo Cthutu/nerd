@@ -81,11 +81,13 @@ completed plans remain in Git history.
 
 ### Experimental Linux libc removal
 
-- Replace remaining runtime float/variadic formatting, environment queries and
-  page-size discovery. Preserve diagnostic, input, formatting and allocation
-  contracts; do not substitute static libc.
-- Own executable startup, argument/environment/auxiliary-vector handling and TLS
-  before removing CRT objects, the loader and automatic libc/libm/libgcc links.
+- Replace remaining runtime float/variadic formatting. Preserve diagnostic,
+  input, formatting and allocation contracts; do not substitute static libc.
+- Replace the GNU libc preinit bridge with independent executable startup and
+  explicit initial-stack/auxiliary-vector handling. Restore musl compatibility
+  without relying on its constructor arguments. Own TLS before removing CRT
+  objects, the loader and automatic libc/libm/libgcc links. Keep hosted-library
+  metadata lookup separate from executable startup.
   Own stack-canary initialisation/TLS as well as the runtime's hidden failure
   hook. Audit compiler-inserted memory and arithmetic helpers. Choose
   and validate the executable relocation model rather than assuming static PIE

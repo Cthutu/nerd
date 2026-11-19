@@ -320,9 +320,19 @@ The hidden `__stack_chk_fail` compiler-ABI hook reports corruption through that
 path; its own entry has no stack protector to avoid recursive failure. Ordinary
 stack protection stays enabled; the host runtime still supplies canary storage
 and initialisation (TLS or a target-specific guard).
-The runtime is still hosted: startup/TLS, float/variadic formatting and
-environment/page-size queries are described in
-[toolchain setup](../toolchain.md#experimental-linux-libc-removal).
+Linux executables use a separate `nrt.exe.o` built with
+`NRT_LINUX_EXECUTABLE=1`; `llvm_runtime.c` selects it for native links and doctor.
+C executable `--copts` selects the same mode. A static `.preinit_array` callback
+uses GNU libc's argc/argv/envp ABI to capture the original auxiliary vector and
+colour environment settings before DSO/executable constructors mutate them.
+The metadata parser accepts explicit environment/auxv vectors so independent
+startup can reuse it later. It copies only policy flags, requires a valid
+`AT_PAGESZ` and performs no allocation. Later `setenv` calls do not change those
+flags. Library/object runtimes retain hosted lookups and no preinit section;
+manual C builds without the reported options retain that compatibility path.
+Musl startup is not supported by this transitional executable mode.
+The runtime is still hosted: CRT entry/TLS and float/variadic formatting remain
+open in [toolchain setup](../toolchain.md#experimental-linux-libc-removal).
 `build/test_runtime_foundation.py` checks primitives, Linux I/O/fatal-exit
 behaviour and the partial undefined-symbol boundary for embedded normal/PIC
 objects. Fatal Linux runtime exits do not flush foreign FILE buffers or invoke

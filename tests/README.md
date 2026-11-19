@@ -34,8 +34,9 @@ describes each regression family.
 - `core/runtime-foundation.c`, `core/runtime-io.linux.c`: runtime byte/string
   primitives, integer conversion, virtual memory, variadic cursors, Linux binary
   I/O, interruptions, terminal policy, fatal worker exits, SIGABRT dispositions
-  and the hidden stack-failure hook. The `runtime` suite
-  runs hosted oracles and a Linux runtime-object undefined-symbol regression;
+  and the hidden stack-failure hook. `core/runtime-metadata*.linux.c` probes
+  auxv parsing and capture before environment-mutating DSO constructors. The
+  `runtime` suite runs hosted/executable variants and runtime-object symbol checks;
   it does not yet assert that complete executables are libc-free.
 - `commands/*.cmd`: CLI syntax, argument passing, output artifacts, exit and
   shutdown behaviour, allocator diagnostics and diagnostic rendering.

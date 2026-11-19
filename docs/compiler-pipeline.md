@@ -91,7 +91,10 @@ Debug uses `-g -O0`; release uses `-O2 -DNDEBUG`. Object/static-library output
 uses `-c`; shared libraries use the host shared-library flag and, on POSIX,
 `-fPIC`. Link modes reuse the LLVM backend's external-library filtering and
 deduplication, including Windows CRT defaults and windowed executables.
-Static archives require a separate `ar` or `llvm-lib` invocation.
+Static archives require a separate `ar` or `llvm-lib` invocation. Linux executable
+options additionally define `NRT_LINUX_EXECUTABLE=1`, selecting the runtime's
+metadata preinit hook. Object/static/shared-library options omit it. Manually
+compiled C without the reported options retains the hosted metadata path.
 
 C library exports use the same root-export ABI validation as LLVM. Native
 function bodies are emitted under their public assembler symbols (also supporting
@@ -236,7 +239,13 @@ The naming rule to remember is:
 
 The compiler build produces the runtime object before compiling `nerd` itself.
 `src/nerd.c` has a build directive that compiles `data/nrt.c` to
-`_obj/runtime/nrt.o`; `llvm_runtime.c` embeds that object with `#embed`.
+`_obj/runtime/nrt.o` and the hosted PIC `nrt.pic.o`; on Linux it also builds
+`nrt.exe.o` with `NRT_LINUX_EXECUTABLE=1`. `llvm_runtime.c` embeds these objects
+with `#embed`. Linux executables (including doctor) select `nrt.exe.o`, which
+captures startup metadata through an ELF preinit hook. Static libraries retain
+`nrt.o`, shared libraries retain `nrt.pic.o`, and object-only output contains no
+runtime. The preinit hook uses GNU libc's calling convention; independent `_start`
+and TLS remain unfinished.
 
 For a normal program build, the backend renders each module's LLVM IR in memory.
 It writes module `.ll` sidecars only when requested with `--llvm`. Executable

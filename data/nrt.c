@@ -497,6 +497,83 @@ _Noreturn void __stack_chk_fail(void)
 }
 #endif
 
+#if defined(NRT_LINUX_EXECUTABLE)
+#if !defined(NRT_LINUX_RAW_SYSCALLS) || !defined(__GLIBC__)
+#error "Experimental Linux executable metadata requires the GNU libc preinit ABI"
+#endif
+
+typedef struct {
+    size_t page_size;
+    bool no_colour;
+    bool dumb_terminal;
+} NrtProcessMetadata;
+
+static NrtProcessMetadata g_nrt_process_metadata;
+
+static const char* nrt_environment_value(const char* entry, const char* key)
+{
+    while (*key != '\0' && *entry == *key) {
+        ++entry;
+        ++key;
+    }
+    return *key == '\0' && *entry == '=' ? entry + 1 : NULL;
+}
+
+// Accept explicit vectors so a future kernel _start can supply the same data
+// without the hosted preinit bridge. Copy policy flags, not borrowed env strings.
+static bool nrt_read_process_metadata(const char* const* environment,
+                                      const uintptr_t* auxiliary,
+                                      NrtProcessMetadata* metadata)
+{
+    metadata->page_size = 0;
+    metadata->no_colour = false;
+    metadata->dumb_terminal = false;
+    bool found_no_colour = false;
+    bool found_term = false;
+    for (; *environment != NULL; ++environment) {
+        const char* value = nrt_environment_value(*environment, "NO_COLOR");
+        if (value != NULL && !found_no_colour) {
+            metadata->no_colour = *value != '\0';
+            found_no_colour = true;
+        }
+        value = nrt_environment_value(*environment, "TERM");
+        if (value != NULL && !found_term) {
+            metadata->dumb_terminal = nrt_cstr_equal(value, "dumb");
+            found_term = true;
+        }
+    }
+    // Kernel AT_PAGESZ is authoritative: neither /proc nor a guessed page size.
+    for (; auxiliary[0] != 0; auxiliary += 2) {
+        if (auxiliary[0] != 6) continue; // AT_PAGESZ
+        size_t size = auxiliary[1];
+        if (metadata->page_size != 0 || size == 0 || (size & (size - 1)) != 0) return false;
+        metadata->page_size = size;
+    }
+    return metadata->page_size != 0;
+}
+
+// GNU libc's executable preinit ABI supplies argc/argv/envp before shared-library
+// and executable constructors can shorten or replace the original env vector.
+static void nrt_linux_process_preinit(int argc, char** argv, char** environment)
+{
+    (void)argc;
+    (void)argv;
+    const char* const* env = (const char* const*)environment;
+    const char* const* end = env;
+    if (end != NULL) {
+        while (*end != NULL) ++end;
+    }
+    if (end == NULL || !nrt_read_process_metadata(env, (const uintptr_t*)(end + 1),
+                                                  &g_nrt_process_metadata)) {
+        nrt_eprintfn("fatal: missing or invalid Linux process metadata");
+        nrt_fatal_exit();
+    }
+}
+
+__attribute__((used, section(".preinit_array")))
+static void (*const g_nrt_linux_preinit)(int, char**, char**) = nrt_linux_process_preinit;
+#endif
+
 void nrt_pr(const void* data, size_t count)
 {
     nrt_write_bytes(false, data, count);
@@ -625,6 +702,8 @@ static size_t nrt_page_size(void)
     SYSTEM_INFO info;
     GetSystemInfo(&info);
     return (size_t)info.dwPageSize;
+#elif defined(NRT_LINUX_EXECUTABLE)
+    return g_nrt_process_metadata.page_size;
 #else
     long page_size = sysconf(_SC_PAGESIZE);
     return page_size > 0 ? (size_t)page_size : 4096;
@@ -1263,6 +1342,8 @@ static bool nrt_stderr_supports_colour(void)
     if (GetEnvironmentVariableA("NO_COLOR", no_colour, sizeof(no_colour)) > 0 ||
         (GetEnvironmentVariableA("TERM", term, sizeof(term)) == 4 &&
          nrt_cstr_equal(term, "dumb"))) return false;
+#elif defined(NRT_LINUX_EXECUTABLE)
+    if (g_nrt_process_metadata.no_colour || g_nrt_process_metadata.dumb_terminal) return false;
 #else
     const char* no_colour = getenv("NO_COLOR");
     const char* term = getenv("TERM");

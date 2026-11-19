@@ -62,7 +62,10 @@ On Linux x86-64/AArch64, the core print helpers write directly to standard
 output/error without libc buffering. If you mix them with a foreign library's
 buffered C stdio, explicitly flush the foreign stream before switching to Nerd
 output; the two APIs do not share a buffer. Fatal `abort`/assertion failures do
-not flush foreign streams or run foreign `atexit` callbacks.
+not flush foreign streams or run foreign `atexit` callbacks. Normal Linux
+executable builds capture `NO_COLOR` and `TERM` before constructors run; changing
+them later through a foreign library does not change runtime colour policy.
+C builds should use the reported `--copts` to select the same startup behaviour.
 
 The file contains Nerd declarations, just like your own module files. Some
 operations delegate to the runtime; `core.n` supplies their Nerd-facing helpers

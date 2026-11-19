@@ -281,6 +281,7 @@ def copts_checks(nerd, tmp, env):
     assert "-O2" in release and "-DNDEBUG" in release and "-g" not in release
     if sys.platform.startswith("linux"):
         assert debug.count("-lm") == 1
+        assert '-DNRT_LINUX_EXECUTABLE=1' in debug
     else:
         assert "-lm" not in debug
     for path in sentinels:
@@ -290,6 +291,13 @@ def copts_checks(nerd, tmp, env):
     executable = work / ("app.exe" if os.name == "nt" else "app")
     run(["clang", "-Werror", source.with_suffix(".c"), *flags, "-o", executable], env)
     run([executable], env)
+    if sys.platform.startswith('linux'):
+        section_table = run(['readelf', '-SW', executable], env).stdout.decode('utf-8')
+        assert '.preinit_array' in section_table, section_table
+        table = run(['readelf', '-Ws', executable], env).stdout.decode('utf-8')
+        undefined = {line.split()[7].split('@')[0] for line in table.splitlines()
+                     if len(line.split()) >= 8 and line.split()[6] == 'UND'}
+        assert not undefined & {'getenv', 'sysconf'}, table
     if os.name != "nt":
         run(["bash", "-c", 'clang "$1" $("$2" build --cgen --copts -r "$3") -o "$4"',
              "copts-test", source.with_suffix(".c"), nerd, source, executable], env)
@@ -320,6 +328,7 @@ int main(void) {
 ''', encoding="utf-8")
     for mode in ("--obj", "--lib", "--dll"):
         flags = options("--cgen", mode, "-r", library)
+        assert '-DNRT_LINUX_EXECUTABLE=1' not in flags
         object_path = work / ("library.obj" if os.name == "nt" else "library.o")
         if mode == "--dll":
             assert "-shared" in flags or "-dynamiclib" in flags

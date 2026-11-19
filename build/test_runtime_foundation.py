@@ -146,6 +146,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix='nerd-runtime-foundation-') as directory:
         directory = Path(directory)
         output = directory / ('runtime.exe' if os.name == 'nt' else 'runtime')
+        if raw_linux:
+            provider = directory / 'metadata-provider.so'
+            subprocess.run(cc + ['-std=c23', '-D_GNU_SOURCE', '-O2', '-fPIC', '-shared',
+                str(ROOT / 'tests/core/runtime-metadata-provider.linux.c'), '-o', str(provider)],
+                check=True, timeout=60)
         for release in (False, True):
             flags = ['-std=c23', '-Wall', '-Wextra', '-Werror']
             flags += ['-DNDEBUG'] if release else []
@@ -161,29 +166,49 @@ def main():
                 assert result.stderr == '', result.stderr
                 if raw_linux:
                     io_output = directory / 'runtime-io'
-                    subprocess.run(cc + flags + [optimisation, '-pthread', '-fstack-protector-all',
-                        str(ROOT / 'tests/core/runtime-io.linux.c'), '-o', str(io_output)],
-                        check=True, timeout=60)
-                    check_linux_io(io_output)
+                    for executable_metadata in (False, True):
+                        variant = ['-DNRT_LINUX_EXECUTABLE=1'] if executable_metadata else []
+                        subprocess.run(cc + flags + variant + [optimisation, '-pthread', '-fstack-protector-all',
+                            str(ROOT / 'tests/core/runtime-io.linux.c'), '-o', str(io_output)],
+                            check=True, timeout=60)
+                        check_linux_io(io_output)
+                    metadata_output = directory / 'runtime-metadata'
+                    subprocess.run(cc + flags + [optimisation, '-DNRT_LINUX_EXECUTABLE=1',
+                        str(ROOT / 'tests/core/runtime-metadata.linux.c'), str(provider),
+                        '-o', str(metadata_output)], check=True, timeout=60)
+                    for no_colour, term in ((None, 'xterm'), ('', 'dumb'), ('1', 'xterm'), (None, None)):
+                        env = dict(os.environ, REMOVE_BEFORE_MAIN='1')
+                        for key, value in (('NO_COLOR', no_colour), ('TERM', term)):
+                            env.pop(key, None)
+                            if value is not None:
+                                env[key] = value
+                        result = subprocess.run([str(metadata_output), str(int(bool(no_colour))),
+                            str(int(term == 'dumb'))], env=env, capture_output=True, timeout=10)
+                        assert (result.returncode, result.stdout, result.stderr) == (
+                            0, b'runtime metadata passed\n', b''), result
             if raw_linux:
                 # Match the optimised embedded runtime build, including PIC.
                 # Inspect nrt alone: the host test oracle intentionally uses libc.
-                for pic in (False, True):
-                    obj = directory / 'nrt.o'
-                    subprocess.run(cc + flags + ['-O2', '-fstack-protector-strong'] + (['-fPIC'] if pic else []) + [
-                        '-c', str(ROOT / 'data/nrt.c'), '-o', str(obj)],
-                        check=True, timeout=60)
-                    symbols = subprocess.check_output(['nm', '-u', str(obj)], text=True)
-                    undefined = {line.split()[-1].split('@')[0]
-                                 for line in symbols.splitlines() if line.split()}
-                    assert not undefined & REMOVED_SYMBOLS, symbols
-                    # The compiler ABI hook is runtime-owned but never exported.
-                    table = subprocess.check_output(['readelf', '-Ws', str(obj)], text=True)
-                    hook = [line.split() for line in table.splitlines()
-                            if line.split() and line.split()[-1] == '__stack_chk_fail']
-                    assert len(hook) == 1 and hook[0][3:6] == ['FUNC', 'GLOBAL', 'HIDDEN'], table
-                    relocations = subprocess.check_output(['readelf', '-rW', str(obj)], text=True)
-                    assert '__stack_chk_fail' in relocations, 'compiler stack checks were not emitted'
+                for variant in ([], ['-DNRT_LINUX_EXECUTABLE=1']):
+                    for pic in (False, True):
+                        obj = directory / 'nrt.o'
+                        subprocess.run(cc + flags + variant + ['-O2', '-fstack-protector-strong'] + (['-fPIC'] if pic else []) + [
+                            '-c', str(ROOT / 'data/nrt.c'), '-o', str(obj)],
+                            check=True, timeout=60)
+                        symbols = subprocess.check_output(['nm', '-u', str(obj)], text=True)
+                        undefined = {line.split()[-1].split('@')[0]
+                                     for line in symbols.splitlines() if line.split()}
+                        removed = REMOVED_SYMBOLS | ({'getenv', 'sysconf'} if variant else set())
+                        assert not undefined & removed, symbols
+                        sections = subprocess.check_output(['readelf', '-SW', str(obj)], text=True)
+                        assert ('.preinit_array' in sections) == bool(variant), sections
+                        # The compiler ABI hook is runtime-owned but never exported.
+                        table = subprocess.check_output(['readelf', '-Ws', str(obj)], text=True)
+                        hook = [line.split() for line in table.splitlines()
+                                if line.split() and line.split()[-1] == '__stack_chk_fail']
+                        assert len(hook) == 1 and hook[0][3:6] == ['FUNC', 'GLOBAL', 'HIDDEN'], table
+                        relocations = subprocess.check_output(['readelf', '-rW', str(obj)], text=True)
+                        assert '__stack_chk_fail' in relocations, 'compiler stack checks were not emitted'
             print('[PASS] runtime foundation:', 'release' if release else 'debug')
 
 

@@ -47,9 +47,13 @@ Linux requires the native libc development/startup files (`Scrt1.o`, `crti.o`,
 runtime helpers. The latter is a runtime library; Nerd invokes no GCC tools.
 Common x86-64 and AArch64 library layouts are searched directly. Nonstandard
 layouts can set `NERD_CRT_DIR` and `NERD_DYNAMIC_LINKER` to the CRT library
-directory and dynamic loader path. Executables are linked as PIE; executable and shared-library links use the PIC
-runtime object. Additional FFI libraries must be installed
-in the native linker search paths.
+directory and dynamic loader path. Executables are linked as PIE. Linux
+executable links use a dedicated PIC runtime with the experimental metadata
+preinit hook; shared-library links use the hosted PIC runtime. Additional FFI
+libraries must be installed in the native linker search paths. Experimental
+Linux executable builds currently require GNU libc's preinit calling convention;
+musl executable startup is deliberately unsupported until independent startup
+replaces that bridge.
 
 Windows requires Visual Studio C++ runtime libraries and the Windows SDK.
 `lld-link` can discover installed SDK/CRT libraries when `LIB` is unset. For a
@@ -103,10 +107,25 @@ reports stack corruption and takes the signal-abort path. Stack protection is
 not disabled: canary storage/initialisation still depends on the hosted runtime
 (TLS or an ABI-specific guard) and must be owned before startup is freestanding.
 
-On validated Linux x86-64, remaining direct runtime imports are `getenv`,
-`sysconf`, `snprintf`, `vsnprintf` and (for PIC TLS) `__tls_get_addr`. Other target
-ABIs can additionally require a canary guard symbol. Executable startup remains
-CRT-owned. Linux linking still supplies all the runtime libraries listed above. pthreads,
+Linux executables capture `AT_PAGESZ`, `NO_COLOR` and `TERM` in an ELF preinit
+hook, before shared-library and executable constructors can mutate the initial
+environment vector. Page size must be present, nonzero and a power of two; there
+is no `/proc` dependency or fallback guess. Colour policy uses copied startup
+flags, so later foreign `setenv`/`unsetenv` calls do not change it. Terminal
+capability is still checked when reporting. The hook uses GNU libc's three-argument
+preinit ABI: this is a hosted transition, not independent kernel startup.
+
+On validated Linux x86-64, the executable runtime's remaining direct imports are
+`snprintf`, `vsnprintf` and (for PIC TLS) `__tls_get_addr`. Object/static/shared
+library runtimes retain `getenv` and `sysconf`: they belong to a foreign host and
+must not install an executable preinit hook or assume an initial stack layout.
+Other target ABIs can additionally require a canary guard symbol. Executable
+startup remains CRT-owned. Linux linking still supplies the runtime libraries
+listed above.
+
+For C output, executable `--copts` includes `-DNRT_LINUX_EXECUTABLE=1` to select
+the same preinit path. Object/library options omit it. Manually compiling C
+without the reported options retains hosted metadata lookup for compatibility. pthreads,
 socket/errno bindings, `execvp` and libm also need replacement before the standard
 library is independent of libc. External FFI libraries can retain their own
 transitive libc dependencies.
@@ -118,7 +137,12 @@ reads/writes, full/broken pipes, fatal worker exits, blocked/ignored/handled
 SIGABRT and the stack-corruption hook. Stack-protected probe builds verify that
 the hook stays defined and hidden in normal/PIC runtime objects, with compiler
 stack-check relocations still emitted. Undefined-symbol checks guard against
-compiler optimisation reintroducing removed calls. This is a partial boundary,
+compiler optimisation reintroducing removed calls. Separate executable-runtime
+checks also reject `getenv`/`sysconf` and require a preinit section, while hosted
+objects must not contain one. Synthetic auxv tests cover page sizes and invalid
+records; a DSO constructor that changes/removes environment entries verifies
+capture ordering. LLVM and recommended C invocations inspect actual binaries.
+This is a partial boundary,
 not an assertion that the whole executable is freestanding. Final acceptance
 must inspect executable `PT_INTERP`, `DT_NEEDED` and undefined symbols as well as
 run the normal behavioural gates. AArch64's syscall bridge still needs native

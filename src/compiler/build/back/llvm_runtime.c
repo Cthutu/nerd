@@ -18,6 +18,12 @@ static const unsigned char g_nrt_pic_object[] = {
 #embed "../../../../_obj/runtime/nrt.pic.o"
 };
 
+#if OS_LINUX
+static const unsigned char g_nrt_executable_object[] = {
+#    embed "../../../../_obj/runtime/nrt.exe.o"
+};
+#endif
+
 internal bool back_end_llvm_runtime_write_bytes(cstr                 path,
                                                 const unsigned char* bytes,
                                                 usize                count)
@@ -45,6 +51,16 @@ bool back_end_llvm_runtime_write_pic_object(cstr path)
 {
     return back_end_llvm_runtime_write_bytes(
         path, g_nrt_pic_object, sizeof(g_nrt_pic_object));
+}
+
+bool back_end_llvm_runtime_write_executable_object(cstr path)
+{
+#if OS_LINUX
+    return back_end_llvm_runtime_write_bytes(
+        path, g_nrt_executable_object, sizeof(g_nrt_executable_object));
+#else
+    return back_end_llvm_runtime_write_pic_object(path);
+#endif
 }
 
 BackEndRootMainInfo

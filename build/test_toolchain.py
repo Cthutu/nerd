@@ -194,6 +194,15 @@ def main():
             executable = work / 'program.exe'
             run('build', *release, source, '-o', executable)
             subprocess.run([str(executable)], check=True, env=env)
+            if sys.platform.startswith('linux'):
+                readelf = shutil.which('readelf')
+                assert readelf, 'Missing readelf for executable runtime inspection'
+                sections = subprocess.check_output([readelf, '-SW', str(executable)], text=True)
+                assert '.preinit_array' in sections, sections
+                symbols = subprocess.check_output([readelf, '-Ws', str(executable)], text=True)
+                undefined = {line.split()[7].split('@')[0] for line in symbols.splitlines()
+                             if len(line.split()) >= 8 and line.split()[6] == 'UND'}
+                assert not undefined & {'getenv', 'sysconf'}, symbols
             for mode, suffix in [('obj', '.o'), ('lib', '.lib' if os.name == 'nt' else '.a'),
                                  ('dll', '.dll' if os.name == 'nt' else '.dylib' if sys.platform == 'darwin' else '.so')]:
                 output = work / ('library' + ('-release' if release else '') + suffix)

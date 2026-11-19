@@ -209,7 +209,16 @@ than EINTR ends the current read. This helper is distinct from `std.io.input`.
 
 ## Core Lifecycle
 
-Executable startup first initialises module globals, then automatically calls
+Normal LLVM Linux executable builds and C builds using executable `--copts`
+first capture runtime metadata in a GNU libc ELF preinit hook. The page size
+comes from kernel `AT_PAGESZ`, not a guessed constant. `NO_COLOR`/`TERM` policy
+flags are copied before shared-library/executable constructors; later foreign
+environment changes do not alter the executable runtime's colour policy.
+Object/static/shared-library runtimes and C compiled without those options
+retain hosted lookup. Independent startup/TLS and musl executable support remain
+unfinished.
+
+Executable startup then initialises module globals, then automatically calls
 the private `core_init` hook before calling the program's `main`. After every
 normal return from `main`, the generated entry wrapper calls `core_done` before
 returning the exit status to the host. Non-returning termination such as

@@ -1402,7 +1402,7 @@ bool back_end_doctor(void)
             ProgramInfo program = {0};
             ok                  = back_end_write_text_file(
                                       ir, s("define i32 @main() { ret i32 0 }\n")) &&
-                                  back_end_llvm_runtime_write_pic_object(runtime) &&
+                                  back_end_llvm_runtime_write_executable_object(runtime) &&
                                   back_end_link_native(
                                       &arena, &program, &artifacts, ir, runtime, false);
             if (ok) {
@@ -1664,8 +1664,10 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         memory_before = compiler_memory_profile_begin();
         timing_start  = back_end_timing_begin(timing);
         bool wrote_runtime =
-            (artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary ||
-             artifacts->output_kind == NERD_BUILD_OUTPUT_Executable)
+            artifacts->output_kind == NERD_BUILD_OUTPUT_Executable
+                ? back_end_llvm_runtime_write_executable_object(
+                      runtime_object_path)
+            : artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary
                 ? back_end_llvm_runtime_write_pic_object(runtime_object_path)
                 : back_end_llvm_runtime_write_object(runtime_object_path);
         if (!wrote_runtime) {
@@ -1770,6 +1772,11 @@ internal bool back_end_print_c_options(const ProgramInfo*        program,
         sb_append_cstr(&flags, " -fPIC");
 #endif
     }
+#if OS_LINUX
+    if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable) {
+        sb_append_cstr(&flags, " -DNRT_LINUX_EXECUTABLE=1");
+    }
+#endif
 #if OS_WINDOWS
     if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable &&
         program->windowed) {

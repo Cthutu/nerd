@@ -27,6 +27,7 @@ typedef struct {
 
 bool back_end_llvm_runtime_write_object(cstr path);
 bool back_end_llvm_runtime_write_pic_object(cstr path);
+bool back_end_llvm_runtime_write_executable_object(cstr path);
 BackEndRootMainInfo
 back_end_llvm_runtime_root_main_info(const FrontEndState* root);
 BackEndCoreLifecycleInfo

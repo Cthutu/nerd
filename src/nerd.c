@@ -5,6 +5,7 @@
 //> run: clang -std=c23 -Wall -Wextra -Werror -O2 -c data/nrt.c -o _obj/runtime/nrt.o
 //> run(windows): clang -std=c23 -Wall -Wextra -Werror -O2 -c data/nrt.c -o _obj/runtime/nrt.pic.o
 //> run(posix): clang -std=c23 -Wall -Wextra -Werror -O2 -fPIC -fvisibility=hidden -c data/nrt.c -o _obj/runtime/nrt.pic.o
+//> run(linux): clang -std=c23 -Wall -Wextra -Werror -O2 -fPIC -fvisibility=hidden -DNRT_LINUX_EXECUTABLE=1 -c data/nrt.c -o _obj/runtime/nrt.exe.o
 // clang-format on
 
 #include <cli/cli.h>
