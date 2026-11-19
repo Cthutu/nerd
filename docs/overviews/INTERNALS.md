@@ -97,6 +97,10 @@ Payload-bearing enum constructor calls use the unwrapped success type as
 their contextual enum when the expected type is optional or result. The normal
 wrapper conversion still wraps the constructed enum after payload checking.
 
+String formatting uses physical triple-quoted lines only when the original
+value already ends with a newline; otherwise ordinary escaped literals retain
+the unterminated final line. Carriage-return bytes also prevent conversion.
+
 Guard-return alignment only groups plain boolean guards. Extraction guards
 with explicit binders stay with the general `on` emitter, which preserves
 bracketed payload bindings when collapsing single-return blocks.

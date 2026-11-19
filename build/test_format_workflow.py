@@ -2,6 +2,7 @@
 """Exercise repository formatting with stale binaries and a failed rebuild."""
 import argparse
 import pathlib
+import subprocess
 import sys
 import tempfile
 from unittest.mock import patch
@@ -55,7 +56,24 @@ def main() -> None:
             assert workflow.main() == 17
             assert source.read_text(encoding='utf-8') == SOURCE
             assert c_source.read_text(encoding='utf-8') == c_text
-    print('Repository formatting workflow checks passed')
+    with tempfile.TemporaryDirectory(prefix='nerd-format-string-bytes-') as directory:
+        source = pathlib.Path(directory) / 'main.n'
+        source.write_text(r'''main :: fn () {
+    escaped := "a\nb"
+    physical := """a
+b"""
+    terminated := "a\nb\n"
+    assert escaped.count == 3 && escaped[2] == 'b'
+    assert physical == escaped
+    assert terminated.count == 4 && terminated[3] == '\n'
+}
+''', encoding='utf-8')
+        subprocess.run([str(nerd), 'format', str(source)], check=True)
+        formatted = source.read_bytes()
+        subprocess.run([str(nerd), 'format', str(source)], check=True)
+        assert source.read_bytes() == formatted, 'String formatting must be idempotent'
+        subprocess.run([str(nerd), 'run', str(source)], check=True)
+    print('Repository formatting workflow and string-byte checks passed')
 
 
 if __name__ == '__main__':

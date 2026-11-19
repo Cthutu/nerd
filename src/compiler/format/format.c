@@ -3211,6 +3211,11 @@ internal bool format_node_kind_is_type_syntax(CstKind kind)
 
 internal bool format_string_should_use_triple_literal(string text)
 {
+    // The physical newline before a closing delimiter is part of the value.
+    // Converting an unterminated last line would silently append a byte.
+    if (text.count == 0 || text.data[text.count - 1] != '\n') {
+        return false;
+    }
     bool has_newline = false;
     bool has_content = false;
     for (usize i = 0; i < text.count; ++i) {
@@ -5523,6 +5528,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             type = format_render_expr_to_string(arena, cst, lexer, node->b);
         } else {
             if (!format_statement_is_single_line(cst, lexer, node_index) &&
+                payload->kind != CK_StringLiteral &&
                 !format_expr_has_multiline_plex(cst, lexer, node->b)) {
                 return false;
             }

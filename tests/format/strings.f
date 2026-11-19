@@ -89,11 +89,7 @@ typed_shader: string: """alpha
 beta"""
 ¬
 main :: fn () {
-    text :=
-        """
-        alpha
-        beta
-        """
+    text := "alpha\nbeta"
     escaped :=
         """
         alpha
@@ -110,11 +106,7 @@ vertex_shader ::
     }
     """
 
-typed_shader : string :
-    """
-    alpha
-    beta
-    """
+typed_shader : string : "alpha\nbeta"
 ¬
 rows::[
     "first"
