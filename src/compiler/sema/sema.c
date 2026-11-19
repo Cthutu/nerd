@@ -27260,9 +27260,9 @@ validate_type:
                 }
             }
             u32 enum_context = sema_no_type();
-            if (expected_type != sema_no_type() &&
-                sema->types[expected_type].kind == STK_Enum) {
-                enum_context = expected_type;
+            if (value_expected != sema_no_type() &&
+                sema->types[value_expected].kind == STK_Enum) {
+                enum_context = value_expected;
             }
             const AstNode* possible_callee = &ast->nodes[node->a];
             if (enum_context == sema_no_type() &&
