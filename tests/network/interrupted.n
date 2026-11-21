@@ -41,7 +41,12 @@ checks :: fn () -> void\NetworkError {
     prn("network interrupted waits and pending connect retry passed")
 }
 
+-- This fault-injection subject explicitly requests libc so LD_PRELOAD can
+-- interpose its foreign socket/thread API. Ordinary programs need no option.
+libc_test_pid :: ffi "c" getpid () -> i32
+
 main :: fn () -> i32 {
+    assert libc_test_pid() > 0
     return on checks() {
         _! => {
             eprn("network interrupted wait contracts failed")

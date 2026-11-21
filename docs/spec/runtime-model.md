@@ -217,8 +217,8 @@ Page size comes from validated kernel `AT_PAGESZ`; policy flags for `NO_COLOR` a
 `PT_TLS`; canaries come from `AT_RANDOM`. Threads own kernel clone/futex resources
 and fresh TLS, and public Linux syscall/socket error codes are thread-local.
 Hosted/foreign-library outputs and manual C without its recommended options
-retain hosted metadata/TLS. `--freestanding` forbids hosted fallback;
-`--hosted` explicitly selects it. Native AArch64 remains unvalidated.
+retain hosted metadata/TLS. Executable builds use libc only for source FFI
+requirements, without user-facing startup switches. Native AArch64 remains unvalidated.
 
 Executable startup then initialises module globals, then automatically calls
 the private `core_init` hook before calling the program's `main`. After every

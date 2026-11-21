@@ -161,8 +161,8 @@ LLVM backend status:
 - The previous IR/C backend has been removed; HIR is the compiler middle layer
   and LLVM IR is the executable backend output.
 - On experimental Linux x86-64 builds, runtime-only executables are independent
-  of libc. `nerd build --freestanding source.n` enforces that boundary;
-  `--hosted` selects foreign CRT/TLS and `LD_PRELOAD` compatibility. See
+  of libc with ordinary `nerd build source.n`; no opt-in is required. Only
+  source FFI requirements can select foreign CRT/TLS and libc linking. See
   [Linux runtime requirements and acceptance](docs/toolchain.md#experimental-linux-libc-removal).
 - `nerd doctor` checks LLVM tools and host linking dependencies with a compile/link/run probe.
   See [toolchain setup](docs/toolchain.md). Nerd uses `opt`, `llc`, and LLVM linkers;

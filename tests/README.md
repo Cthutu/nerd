@@ -40,6 +40,8 @@ describes each regression family.
   over-aligned fresh TLS, actual canary failure and worker termination. Per-profile
   `build/test_libc_free.py` stages run LLVM/C debug/release programs and reject any
   interpreter, DT_NEEDED or undefined symbols in the complete ELF executables.
+  Plain hello-world builds need no startup flag; explicit direct/imported libc
+  FFI is checked separately, and simulated implicit libc imports must fail linking.
   Failed acceptance artefacts remain under `_tmp`. Network binaries are inspected
   by the default gate; loopback execution remains opt-in.
 - `commands/*.cmd`: CLI syntax, argument passing, output artifacts, exit and

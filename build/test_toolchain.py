@@ -320,9 +320,12 @@ def main():
                 env['NERD_CRT_DIR'] = str(work / 'absent-sdk')
                 env['NERD_DYNAMIC_LINKER'] = str(work / 'absent-loader')
                 assert 'optional hosted libc startup objects: unavailable' in run('doctor')
-                run('build', '--freestanding', source, '-o', executable)
+                run('build', source, '-o', executable)
                 subprocess.run([str(executable)], check=True, env=env)
-                assert 'Cannot find native CRT objects' in run('build', '--hosted', source,
+                foreign = work / 'libc-request.n'
+                foreign.write_text('pid :: ffi "c" getpid () -> i32\n'
+                                   'main :: fn () { assert pid() > 0 }\n')
+                assert 'Cannot find native CRT objects' in run('build', foreign,
                     '-o', work / 'needs-host', success=False)
                 del env['NERD_CRT_DIR']
                 del env['NERD_DYNAMIC_LINKER']

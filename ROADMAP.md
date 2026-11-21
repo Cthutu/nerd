@@ -85,8 +85,8 @@ Runtime-only Linux x86-64 executables now own entry/TLS/canaries, formatting,
 kernel threads/futex synchronisation, socket/errno/PATH wrappers and maths.
 LLVM/C debug/release acceptance runs inspect complete binaries for no interpreter,
 DT_NEEDED or undefined symbols; no static libc is substituted.
-`--freestanding` enforces the boundary and `--hosted` opts into foreign CRT/TLS
-and preload interposition. See [toolchain setup](docs/toolchain.md#experimental-linux-libc-removal).
+Ordinary builds enforce the boundary without startup switches; only source FFI
+requirements permit foreign CRT/TLS and libc linking. See [toolchain setup](docs/toolchain.md#experimental-linux-libc-removal).
 
 - Validate native AArch64 separately, including its kernel-thread entry, TLS,
   guard, maths and existing standard-library ABI/layout limitations. Test

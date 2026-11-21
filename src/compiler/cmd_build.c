@@ -70,8 +70,6 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
         artifacts.binary_path =
             path_replace_extension(arena, output_root, ".c");
     }
-    artifacts.hosted          = config->hosted;
-    artifacts.freestanding    = config->freestanding;
     artifacts.emit_c_file     = config->emit_c;
     artifacts.print_c_options = config->print_c_options;
     artifacts.hir_path  = compiler_cmd_sidecar_path(arena, output_root, ".hir");

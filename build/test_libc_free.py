@@ -53,21 +53,40 @@ def main():
         denied.mkdir()
         (denied / 'provider').write_text('not executable')
         execution_env = dict(env, PATH=f'{denied}:{work}', LIBC_FREE_ENV='inherited')
+        hello = work / 'hello.n'
+        hello.write_text('main :: fn () { prn("Hello, world!") }\n')
+        direct = work / 'direct.n'
+        direct.write_text('pid :: ffi "c" getpid () -> i32\n'
+                          'main :: fn () {\n assert pid() > 0\n prn("libc requested")\n}\n')
+        (work / 'libc_dependency.n').write_text('pub pid :: ffi "c" getpid () -> i32\n')
+        indirect = work / 'indirect.n'
+        indirect.write_text('dep :: use libc_dependency\n'
+                            'main :: fn () {\n assert dep.pid() > 0\n prn("libc requested")\n}\n')
         for release in (False, True):
             for backend in ('llvm', 'c'):
-                def compile(source, name):
+                def compile(source, name, independent=True):
                     executable = work / name
-                    command = [nerd, 'build', '--freestanding', ROOT / source, '-o', executable]
+                    command = [nerd, 'build', ROOT / source, '-o', executable]
                     if release:
                         command.append('-r')
                     if backend == 'c':
                         flags = shlex.split(run(command + ['--cgen', '--copts'], env).stdout.decode())
-                        assert '-nostdlib' in flags and '-DNRT_FREESTANDING=1' in flags, flags
+                        assert ('-nostdlib' in flags) == independent, flags
+                        assert ('-DNRT_FREESTANDING=1' in flags) == independent, flags
                         run(['clang', executable.with_suffix('.c'), *flags, '-o', executable], env)
                     else:
                         run(command, env)
-                    inspect(executable, env)
+                    if independent:
+                        inspect(executable, env)
+                    else:
+                        dynamic = run(['readelf', '-dW', executable], env).stdout
+                        assert b'(NEEDED)' in dynamic and b'libc.so' in dynamic, dynamic
                     return executable
+                executable = compile(hello, 'hello')
+                run([executable], env, output=b'Hello, world!\n')
+                for source in (direct, indirect):
+                    executable = compile(source, 'foreign', independent=False)
+                    run([executable], env, output=b'libc requested\n')
                 executable = compile('tests/core/libc-free.n', 'language')
                 run([executable, 'hello', work / 'bytes'], env, status=42,
                     output=b'libc-free language passed\n')
@@ -89,6 +108,31 @@ def main():
                 executable = compile('tests/stdlib-thread-sync/lifecycle.n', 'thread')
                 run([executable], env, output=b'Thread lifecycle and predicate waits passed\n')
                 print('PASS libc-free:', backend, 'release' if release else 'debug')
+        # Simulate an accidental compiler/runtime libc import. Without source
+        # FFI, this must fail at the native link, never retry against libc/CRT.
+        tools = work / 'tools'
+        tools.mkdir()
+        llc = shutil.which('llc')
+        assert llc
+        wrapper = tools / 'llc'
+        wrapper.write_text(f'''#!{sys.executable}
+import pathlib, subprocess, sys
+status = subprocess.call([{llc!r}, *sys.argv[1:]])
+if status == 0 and '-o' in sys.argv:
+    output = pathlib.Path(sys.argv[sys.argv.index('-o') + 1])
+    data = output.read_bytes()
+    symbol = b'nrt_core_init\\0'
+    assert symbol in data
+    output.write_bytes(data.replace(symbol, b'getenv' + b'\\0' * (len(symbol) - 6)))
+sys.exit(status)
+''')
+        wrapper.chmod(0o755)
+        result = run([nerd, 'build', hello, '-o', work / 'unowned'],
+            dict(env, PATH=f'{tools}:{env["PATH"]}', NERD_CRT_DIR=str(work / 'no-crt')),
+            status=1)
+        assert b'getenv' in result.stderr and b'undefined symbol' in result.stderr, result
+        assert b'Cannot find native CRT' not in result.stderr, result
+        print('PASS implicit libc imports fail without source FFI')
         for optimisation in ('-O0', '-O2'):
             executable = work / 'startup'
             run(['clang', '-std=c23', '-Wall', '-Wextra', '-Werror', optimisation,

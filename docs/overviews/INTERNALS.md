@@ -330,8 +330,9 @@ futex mutexes/conditions, errno/socket wrappers and PATH execution.
 variadic formatting. All three are embedded with the runtime in C output.
 Linking uses fixed-address ET_EXEC, section collection and as-needed libraries;
 actual DT_NEEDED or unresolved foreign calls trigger a fresh hosted PIC/CRT
-link unless `--freestanding` was requested. `--hosted` selects the foreign ABI
-directly. C options use a conservative callable-reference query for that policy.
+link only for source FFI requirements. Compiler/runtime-only dependencies cannot
+trigger libc fallback, and no startup switches are exposed. C options use a
+conservative callable-reference query for that policy.
 A separate per-profile libc-free gate runs LLVM/C debug/release programs and
 checks no interpreter, DT_NEEDED or undefined symbols; native bootstrap probes
 check constructors, over-aligned fresh TLS, worker exits and actual canary failure.

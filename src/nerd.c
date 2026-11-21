@@ -648,20 +648,6 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                 arena, "llvm", NULL, "Write generated LLVM IR to a file"));
         json_array_push(
             build_flags,
-            nerd_cli_make_flag(arena,
-                               "hosted",
-                               NULL,
-                               "Use Linux hosted CRT/TLS (including LD_PRELOAD "
-                               "interposition)"));
-        json_array_push(
-            build_flags,
-            nerd_cli_make_flag(
-                arena,
-                "freestanding",
-                NULL,
-                "Require a Linux executable without foreign shared libraries"));
-        json_array_push(
-            build_flags,
             nerd_cli_make_flag(arena, "release", "r", "Build release binary"));
         json_array_push(
             build_flags,
@@ -1068,9 +1054,6 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
             s("auto")),
         .print_c_options =
             nerd_cli_flag_bool(cli_result, "command.flags.copts", false),
-        .hosted = nerd_cli_flag_bool(cli_result, "command.flags.hosted", false),
-        .freestanding =
-            nerd_cli_flag_bool(cli_result, "command.flags.freestanding", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_llvm =
@@ -1100,23 +1083,6 @@ internal bool nerd_build_output_flags_valid(const JsonValue* cli_result)
         eprn("`--cgen` and `--copts` cannot be combined with `--llvm`.");
         return false;
     }
-    bool hosted = nerd_cli_flag_bool(cli_result, "command.flags.hosted", false);
-    bool freestanding =
-        nerd_cli_flag_bool(cli_result, "command.flags.freestanding", false);
-    if (hosted && freestanding) {
-        eprn("`--hosted` and `--freestanding` are mutually exclusive.");
-        return false;
-    }
-    if ((hosted || freestanding) && count) {
-        eprn("Linux startup flags require executable output.");
-        return false;
-    }
-#if !OS_LINUX
-    if (hosted || freestanding) {
-        eprn("`--hosted` and `--freestanding` require Linux.");
-        return false;
-    }
-#endif
     if (count <= 1) {
         return true;
     }

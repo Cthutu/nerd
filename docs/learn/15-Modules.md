@@ -64,9 +64,9 @@ buffered C stdio, explicitly flush the foreign stream before switching to Nerd
 output; the two APIs do not share a buffer. Fatal `abort`/assertion failures do
 not flush foreign streams or run foreign `atexit` callbacks. Runtime-only Linux
 executables own startup/TLS and capture `NO_COLOR`/`TERM` before constructors;
-changing those strings later does not change their colour policy. Use
-`nerd build --freestanding main.n` to enforce the libc-free executable boundary,
-or `--hosted` for foreign CRT/TLS and `LD_PRELOAD` interposition. C builds should
+changing those strings later does not change their colour policy. Ordinary
+`nerd build main.n` requires no libc unless source FFI asks for it, directly or
+through an imported module. No special startup option is needed. C builds should
 use the reported `--copts` to select matching startup/link options. Hosted library
 outputs remain distinct; see [toolchain setup](../toolchain.md).
 

@@ -440,8 +440,6 @@ def main() -> None:
                 copy.write_text(instrumented)
                 source = str(copy)
             command = [str(args.compiler.resolve()), "build", source, "-o", str(target)]
-            if sys.platform.startswith("linux"):
-                command.append("--freestanding")
             if args.release:
                 command.append("--release")
             if args.cgen:
@@ -486,7 +484,15 @@ def main() -> None:
             # First exercise the independent binaries above, then rebuild only
             # interposition subjects against the hosted loader/TLS ABI.
             for index in (0, 3, 7, 8, 9, 11):
-                command = [part for part in commands[index] if part != '--freestanding'] + ['--hosted']
+                command = commands[index].copy()
+                original = (ROOT / command[2]).read_text(encoding="utf-8")
+                instrumented, count = re.subn(r"(main :: fn \([^\n]*\)[^{\n]*\{)",
+                    r"\1\n    assert libc_test_pid() > 0", original, count=1)
+                assert count == 1
+                copy = directory / f"libc-ffi-{index}.n"
+                copy.write_text('libc_test_pid :: ffi "c" getpid () -> i32\n' + instrumented,
+                                encoding="utf-8")
+                command[2] = str(copy)
                 run(command, env)
                 if args.cgen:
                     flags = shlex.split(run(command + ['--copts'], env))

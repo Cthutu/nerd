@@ -120,8 +120,8 @@ waiters, signal/broadcast, notification before waiting, cleanup/reinitialisation
 concurrent heap/interpolation allocations and worker TLS cleanup. The example
 checks a 100-element one-slot producer/consumer pipeline with total 5050.
 
-Preload-based startup failure injection explicitly uses `--hosted`; it cannot
-interpose independent kernel clone calls. The separate libc-free acceptance gate
+Preload-based startup failure fixtures explicitly call libc through FFI to obtain
+the foreign loader/CRT ABI; preload cannot interpose independent kernel clone calls. The separate libc-free acceptance gate
 inspects actual LLVM/C executables and exercises fresh worker TLS/errno, self-join,
 repeated creation/join and fatal termination. Native OS resource-exhaustion fault
 injection, forced spurious wake scheduling,

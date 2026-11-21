@@ -1,7 +1,12 @@
 use std.io
 use std.raptor
 
+-- This fault-injection subject explicitly requests libc so LD_PRELOAD can
+-- interpose its foreign socket/thread API. Ordinary programs need no option.
+libc_test_pid :: ffi "c" getpid () -> i32
+
 main :: fn () -> i32 {
+    assert libc_test_pid() > 0
     scheduler : Scheduler
     -- Linux runner fails the third native thread creation exactly once.
     assert scheduler.init(4) == nil

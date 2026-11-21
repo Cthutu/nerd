@@ -304,15 +304,13 @@ def copts_checks(nerd, tmp, env):
                      if len(line.split()) >= 8 and line.split()[6] == 'UND'}
         assert not undefined & {'getenv', 'sysconf'}, table
     if sys.platform.startswith('linux'):
-        strict = options('--freestanding', source)
-        assert '-DNRT_FREESTANDING=1' in strict and '-nostdlib' in strict, strict
-        hosted = options('--hosted', source)
+        assert '-DNRT_FREESTANDING=1' in flags and '-nostdlib' in flags, flags
+        foreign = 'pid :: ffi "c" getpid () -> i32\nmain :: fn () { assert pid() > 0 }'
+        hosted = options(foreign)
         assert '-DNRT_LINUX_EXECUTABLE=1' not in hosted and '-nostdlib' not in hosted, hosted
-        run(['clang', source.with_suffix('.c'), *hosted, '-o', executable], env)
-        run([executable], env)
-        foreign = 'native_abs :: ffi "c" abs (value: i32) -> i32\nmain :: fn () => native_abs(-42)'
-        rejected = run([nerd, 'build', '--copts', '--freestanding', foreign], env, check=False)
-        assert rejected.returncode and not rejected.stdout, rejected
+        for removed in ('--freestanding', '--hosted'):
+            rejected = run([nerd, 'build', '--copts', removed, source], env, check=False)
+            assert rejected.returncode and b'Unknown option' in rejected.stderr, rejected
     if os.name != "nt":
         run(["bash", "-c", 'clang "$1" $("$2" build --cgen --copts -r "$3") -o "$4"',
              "copts-test", source.with_suffix(".c"), nerd, source, executable], env)

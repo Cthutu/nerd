@@ -73,8 +73,6 @@ typedef struct {
     bool                emit_hir;
     bool                emit_llvm;
     bool                emit_c;
-    bool                hosted;
-    bool                freestanding;
     bool                print_c_options;
     bool                release;
     bool                verbose;
@@ -129,8 +127,6 @@ typedef struct {
     bool                emit_hir_file;
     bool                emit_llvm_file;
     bool                emit_c_file;
-    bool                hosted;
-    bool                freestanding;
     bool                print_c_options;
     NerdBuildOutputKind output_kind;
     u32                 jobs; // Zero means the serial default.

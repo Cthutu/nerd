@@ -94,8 +94,8 @@ deduplication, including Windows CRT defaults and windowed executables.
 Static archives require a separate `ar` or `llvm-lib` invocation. Linux executable
 options select independent startup/local-exec TLS and `-nostdlib` for runtime-only
 programs; a conservative HIR callable-reference query selects hosted options for
-foreign calls. `--freestanding` rejects those foreign C requirements;
-`--hosted` explicitly chooses the foreign CRT/TLS ABI. Object/archive/shared
+foreign calls. There are no user-facing startup switches: source FFI determines
+whether foreign CRT/TLS is needed. Object/archive/shared
 options and manual C compilation without the recommended flags remain hosted.
 
 C library exports use the same root-export ABI validation as LLVM. Native
@@ -251,8 +251,9 @@ Runtime headers `data/nfmt.h`, `nlinux.h` and `nmath.h` are also embedded in C o
 run-directive dependency tracking follows local includes to avoid stale objects.
 The linker first tries fixed-address ET_EXEC with section collection/as-needed
 libraries and no interpreter. A real dynamic dependency or unresolved foreign
-call triggers a fresh hosted PIC/CRT link, unless `--freestanding` forbids it.
-`--hosted` selects that ABI directly. Static libraries retain `nrt.o`, shared
+call permits a fresh hosted PIC/CRT link only when source HIR references foreign
+FFI outside the runtime-owned ABI. A dependency introduced only by generated
+code/runtime must fail linking, never silently add libc. Static libraries retain `nrt.o`, shared
 libraries retain `nrt.pic.o`, and object-only output contains no runtime.
 
 For a normal program build, the backend renders each module's LLVM IR in memory.

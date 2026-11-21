@@ -46,7 +46,7 @@ Linux runtime-only executables use Nerd-owned startup/TLS and need no CRT
 objects, loader, libc, libm or libgcc at execution time. This path is validated
 on native x86-64. The compiler executable itself remains hosted.
 
-Foreign-library builds and explicit `--hosted` builds use PIE, the hosted
+Source FFI requirements can select PIE, the hosted
 runtime, native libc startup files (`Scrt1.o`, `crti.o`, `crtn.o`), the
 dynamic loader and runtime libraries. Common x86-64/AArch64 layouts are searched;
 nonstandard installations can set `NERD_CRT_DIR` and `NERD_DYNAMIC_LINKER`.
@@ -84,29 +84,28 @@ hosted; native AArch64 validation and broader ABI/accuracy hardening are still
 outstanding. This branch remains experimental.
 
 ```sh
-nerd build --freestanding main.n        # Refuse a hosted fallback
-nerd build --hosted main.n              # Explicit foreign CRT/TLS/LD_PRELOAD ABI
+nerd build main.n                      # No libc unless source FFI requires it
 nerd build --cgen main.n
 clang main.c $(nerd build --copts main.n) -o main
 ```
 
-Without either flag, LLVM first links the independent runtime, using section
+Every ordinary LLVM executable build first links the independent runtime, using section
 garbage collection and `--as-needed` so unused foreign declarations do not
 create runtime dependencies. It inspects the result for `DT_NEEDED`. Dynamic
 foreign-library or unsupported relocation requirements select a fresh hosted
 link/runtime instead; native
 and foreign libc TLS are never mixed. A failed native link can take that path
-only when HIR references foreign functions outside the runtime-owned ABI. `--freestanding` prohibits it.
-The two flags are mutually exclusive and apply only to Linux executable builds.
+only when HIR references foreign functions outside the runtime-owned ABI. An
+accidental libc import from generated code or the runtime fails linking rather
+than silently selecting libc. There are no startup-mode command-line switches.
 
 Recommended C options make a conservative HIR callable-reference check: calls
 outside the runtime-owned ABI select hosted compilation. Runtime-only options
 include `NRT_LINUX_EXECUTABLE=1`, `NRT_FREESTANDING=1`, local-exec TLS,
 freestanding compilation, stack protection and `-nostdlib -no-pie`. Foreign
 functions in unreachable source bodies can make this query more conservative
-than LLVM's final section collection. Explicit freestanding C options reject
-such foreign calls rather than producing a binary with an unusable loader/TLS
-combination. Manually compiling generated C without its reported options retains
+than LLVM's final section collection. Source FFI, not a compiler option, controls
+whether libc is permitted. Manually compiling generated C without its reported options retains
 the hosted path. Object/archive/shared-library outputs also remain hosted.
 
 ### Executable substrate
@@ -160,14 +159,18 @@ SIGPIPE policy. Runtime line input handles LF/CRLF/CR with at most one pushback
 byte. Foreign FILE buffering must be synchronised explicitly. Fatal exits skip
 foreign atexit/buffer flushing. Hosted normal returns retain CRT shutdown.
 External X11/GL/Vulkan and other FFI libraries may retain libc dependencies;
-`--hosted` is also required for intentional LD_PRELOAD interposition.
+Intentional LD_PRELOAD tests use an actual source FFI libc call to request that
+foreign ABI; there is no command-line override.
 Windows/macOS keep their existing hosted startup.
 
 ### Acceptance and remaining validation
 
 `just test --suite runtime` includes `build/test_libc_free.py` for each compiler
 profile. It runs LLVM/C debug/release programs and rejects any ELF `PT_INTERP`,
-`DT_NEEDED` or undefined symbols. It proves argument/status handling, binary files,
+`DT_NEEDED` or undefined symbols. Plain hello-world builds are inspected without
+special startup options; direct and imported FFI libc calls are separately checked
+for successful hosted linking. A simulated generated libc import with no source
+FFI must fail rather than retry against libc. The gate also proves argument/status handling, binary files,
 formatting, maths, TLS/errno isolation, joins, PATH errors and script execution.
 A no-CRT C bootstrap probe additionally checks constructors/destructors,
 over-aligned TLS, actual compiler canary failure, SIGABRT and worker-wide fatal

@@ -1268,7 +1268,7 @@ internal bool back_end_link_native(Arena*                    arena,
             &command, " \"%.*s.lib\"", (int)(i - start), flags.data + start);
     }
 #elif OS_LINUX
-    if (!shared && !artifacts->hosted) {
+    if (!shared) {
         sb_init(&command, arena);
         sb_format(&command,
                   "ld.lld --gc-sections --as-needed --no-dynamic-linker -e "
@@ -1304,8 +1304,7 @@ internal bool back_end_link_native(Arena*                    arena,
         }
         // A real foreign-library reference requires its hosted TLS/CRT ABI.
         // Never use a static libc archive to disguise this boundary.
-        if (artifacts->freestanding ||
-            !cgen_requires_hosted_libraries(program)) {
+        if (!cgen_requires_hosted_libraries(program)) {
             if (native.exit_code == 0) {
                 return error_runtime("Executable requires foreign libraries or "
                                      "hosted relocations in libc-free mode");
@@ -1486,12 +1485,12 @@ bool back_end_doctor(void)
                   path_exists(path_join(&arena, crt, "crtn.o"));
     prn("[INFO] optional hosted libc startup objects: %s",
         crt_ok ? "available"
-               : "unavailable (only foreign/--hosted builds need them)");
+               : "unavailable (only foreign FFI builds need them)");
     bool loader_ok =
         back_end_linux_loader() && path_exists(back_end_linux_loader());
     prn("[INFO] optional hosted dynamic loader: %s",
         loader_ok ? "available"
-                  : "unavailable (only foreign/--hosted builds need it)");
+                  : "unavailable (only foreign FFI builds need it)");
 #elif OS_MACOS
     ShellResult sdk =
         shell_capture("xcrun --sdk macosx --show-sdk-path", &arena);
@@ -1803,8 +1802,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         memory_before = compiler_memory_profile_begin();
         timing_start  = back_end_timing_begin(timing);
         bool wrote_runtime =
-            artifacts->output_kind == NERD_BUILD_OUTPUT_Executable &&
-                    !artifacts->hosted
+            artifacts->output_kind == NERD_BUILD_OUTPUT_Executable
                 ? back_end_llvm_runtime_write_executable_object(
                       runtime_object_path)
             : (artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary ||
@@ -1916,13 +1914,7 @@ internal bool back_end_print_c_options(const ProgramInfo*        program,
 #if OS_LINUX
     if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable) {
         bool foreign = cgen_requires_hosted_libraries(program);
-        if (artifacts->freestanding && foreign) {
-            arena_done(&arena);
-            return error_runtime(
-                "Standalone C options require runtime-owned FFI calls; use "
-                "--hosted for foreign libraries");
-        }
-        if (!artifacts->hosted && !foreign) {
+        if (!foreign) {
             sb_append_cstr(&flags, " -DNRT_LINUX_EXECUTABLE=1");
             sb_append_cstr(
                 &flags,
@@ -1963,19 +1955,6 @@ bool back_end_program(ProgramInfo*              program,
         artifacts = &default_artifacts;
     }
 
-    if (artifacts->hosted && artifacts->freestanding) {
-        return error_runtime(
-            "Hosted and freestanding startup are mutually exclusive");
-    }
-    if ((artifacts->hosted || artifacts->freestanding) &&
-        artifacts->output_kind != NERD_BUILD_OUTPUT_Executable) {
-        return error_runtime("Linux startup flags require executable output");
-    }
-#if !OS_LINUX
-    if (artifacts->hosted || artifacts->freestanding) {
-        return error_runtime("Linux startup flags require Linux");
-    }
-#endif
     if ((artifacts->emit_c_file || artifacts->print_c_options) &&
         artifacts->output_kind != NERD_BUILD_OUTPUT_Executable &&
         !back_end_validate_c_exports(program)) {
