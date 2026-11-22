@@ -1,5 +1,13 @@
 # Internals
 
+Local-binding inference retains binding and AST node indices across recursive
+resolution. Generic function/method instantiation can append locals and cloned
+AST nodes, invalidating pointers into either table. Inference reacquires local
+rows after recursive calls, clears cycle flags through the saved node index,
+and selects default initialisers without retaining a local pointer across type
+resolution. `local-inference-growth.t` exercises nested method inference while
+instantiation grows the local table, including distinct concrete specialisations.
+
 Generic type aliases are registered before concrete aliases instantiate their
 fields, preserving forward generic references across module parts. Type-expression
 marking descends through expression wrappers, and generic array/tuple validation

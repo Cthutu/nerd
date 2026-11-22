@@ -19240,8 +19240,9 @@ internal bool sema_block_has_value_break_for_target(const Ast* ast,
 internal void sema_select_default_method_for_local(const Lexer* lexer,
                                                    const Ast*   ast,
                                                    Sema*        sema,
-                                                   SemaLocal*   local)
+                                                   u32          local_index)
 {
+    const SemaLocal* local = &sema->locals[local_index];
     if (local->kind != SLK_Variable ||
         local->value_node_index != sema_no_decl() ||
         local->type_index == sema_no_type() ||
@@ -19260,10 +19261,11 @@ internal void sema_select_default_method_for_local(const Lexer* lexer,
         return;
     }
 
+    u32 decl_node_index = local->decl_node_index;
     u32 default_method_decl =
         sema_find_core_default_method_decl(lexer, ast, sema, local->type_index);
     if (default_method_decl != sema_no_decl()) {
-        sema->node_method_call_decl_indices[local->decl_node_index] =
+        sema->node_method_call_decl_indices[decl_node_index] =
             default_method_decl;
         sema->node_method_call_decl_indices[payload_index] =
             default_method_decl;
@@ -19278,12 +19280,13 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
 {
     SemaLocal* local = &sema->locals[local_index];
     if (local->type_index != sema_no_type()) {
-        sema_select_default_method_for_local(lexer, ast, sema, local);
-        *out_type_index = local->type_index;
+        sema_select_default_method_for_local(lexer, ast, sema, local_index);
+        *out_type_index = sema->locals[local_index].type_index;
         return true;
     }
 
-    AstNode* bind_node = &ast->nodes[local->decl_node_index];
+    u32      bind_node_index = local->decl_node_index;
+    AstNode* bind_node       = &ast->nodes[bind_node_index];
     if (ast_has_flag(bind_node, ANF_ConstBusy)) {
         if (local->type_index != sema_no_type() &&
             sema_local_value_is_type_syntax(
@@ -19333,6 +19336,9 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
         ok = false;
     }
 
+    // Type resolution and inference can instantiate generic functions, growing
+    // both the local-binding and AST tables. Retain indices across those calls.
+    local = &sema->locals[local_index];
     if (ok && local->type_node_index == sema_no_type() &&
         sema_local_value_is_type_syntax(lexer, ast, local->value_node_index) &&
         !sema_resolve_type_node(
@@ -19340,6 +19346,7 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
         ok = false;
     }
 
+    local = &sema->locals[local_index];
     if (ok && local->value_node_index != sema_no_decl() &&
         inferred == sema_no_type() &&
         !sema_infer_node_type(
@@ -19347,6 +19354,7 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
         ok = false;
     }
 
+    local = &sema->locals[local_index];
     if (ok) {
         if (reserved_type != sema_no_type()) {
             sema->types[reserved_type] = sema->types[inferred];
@@ -19386,11 +19394,11 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
                            : sema_materialise_type(sema, inferred));
         }
         sema->node_type_indices[local->decl_node_index] = local->type_index;
-        sema_select_default_method_for_local(lexer, ast, sema, local);
-        *out_type_index = local->type_index;
+        sema_select_default_method_for_local(lexer, ast, sema, local_index);
+        *out_type_index = sema->locals[local_index].type_index;
     }
 
-    ast_clear_flag(bind_node, ANF_ConstBusy);
+    ast_clear_flag(&ast->nodes[bind_node_index], ANF_ConstBusy);
     return ok;
 }
 
@@ -27851,6 +27859,7 @@ validate_type:
                 return false;
             }
 
+            local = &sema->locals[local_index];
             if (local->value_node_index == sema_no_decl()) {
                 if (!sema_type_is_variable_storage(sema, annotated)) {
                     return error_0306_invalid_variable_type(
@@ -27859,7 +27868,8 @@ validate_type:
                         sema_type_name(lexer, sema, &temp_arena, annotated));
                 }
                 local->type_index = annotated;
-                sema_select_default_method_for_local(lexer, ast, sema, local);
+                sema_select_default_method_for_local(
+                    lexer, ast, sema, local_index);
                 type_index = annotated;
                 break;
             }
@@ -27873,6 +27883,7 @@ validate_type:
                 return false;
             }
 
+            local = &sema->locals[local_index];
             if (sema->types[type_index].kind == STK_VaList) {
                 u32 value = sema_unwrap_expr_node(ast, local->value_node_index);
                 const AstNode* expr = &ast->nodes[value];
@@ -27887,7 +27898,6 @@ validate_type:
                         s("argument cursor assignment"));
                 }
             }
-            local      = &sema->locals[local_index];
             type_index = annotated != sema_no_type()
                              ? annotated
                              : sema_materialise_type(sema, type_index);
