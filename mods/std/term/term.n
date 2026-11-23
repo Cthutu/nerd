@@ -1436,13 +1436,12 @@ term_csi_modifier_flags :: fn (modifier: u32) -> u32 {
 }
 
 term_input_event_from_modified_key :: fn (key      : ?TermScanCode,
-                                          modifier : u32) -> TermInputEvent {
+                                          modifier : u32,
+                                          action   : TermKeyAction = TermKeyAction.Press) -> TermInputEvent {
     return on key {
         code => {
             flags := term_csi_modifier_flags(modifier)
-            return term_key_event(code,
-                                  action = TermKeyAction.Press,
-                                  modifiers = flags)
+            return term_key_event(code, action = action, modifiers = flags)
         }
 
         else => TermInputEvent.None
@@ -1584,23 +1583,25 @@ term_scan_code_from_kitty_key :: fn (key: u32) -> TermScanCode {
     }
 }
 
+term_csi_key_action :: fn (parameters: TermCsiParameters) -> TermKeyAction {
+    return on term_csi_parameter(parameters, 1, 1, fallback = 1) {
+        2     => TermKeyAction.Repeat
+        3     => TermKeyAction.Release
+        else  => TermKeyAction.Press
+    }
+}
+
 term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEvent {
     key             := term_csi_parameter(parameters, 0, 0)
     base_layout_key := term_csi_parameter(parameters, 0, 2)
 
     on base_layout_key == 0 => base_layout_key = key
 
-    modifier_parameter := term_csi_parameter(parameters, 1, 0, fallback = 1)
-    modifiers          := on modifier_parameter > 0 => modifier_parameter - 1 else 0
-    event_type         := term_csi_parameter(parameters, 1, 1, fallback = 1)
-
-    action := on event_type == 2
-        =>   TermKeyAction.Repeat
-        else on (event_type == 3)
-        =>   TermKeyAction.Release
-        else TermKeyAction.Press
-    text             := term_csi_parameter(parameters, 2, 0)
-    character : ?u32 = nil
+    modifier_parameter        := term_csi_parameter(parameters, 1, 0, fallback = 1)
+    modifiers                 := on modifier_parameter > 0 => modifier_parameter - 1 else 0
+    action                    := term_csi_key_action(parameters)
+    text                      := term_csi_parameter(parameters, 2, 0)
+    character          : ?u32 = nil
 
     on text > 0 => character = text
     subfield : u32 = 1
@@ -1634,7 +1635,9 @@ term_input_event_from_csi_parameters :: fn (parameters: TermCsiParameters) -> Te
     key := on parameters.final == '~'
         =>   term_csi_tilde_key(number)
         else term_csi_final_key(parameters.final)
-    return term_input_event_from_modified_key(key, modifier)
+    return term_input_event_from_modified_key(key,
+                                              modifier,
+                                              action = term_csi_key_action(parameters))
 }
 
 term_mouse_button_from_sgr :: fn (button_code: u32) -> u32 {
@@ -1880,6 +1883,31 @@ test "terminal UTF-8 decoding advances past malformed bytes" {
 
 test {
 
+    term_test_csi_action :: fn (encoded   : string,
+                                final     : u8,
+                                expected  : TermScanCode,
+                                action    : TermKeyAction,
+                                modifiers : u32) {
+        parameters : TermCsiParameters
+        for index in [0 .. encoded.count] {
+            parameters.bytes[index] = encoded[index]
+        }
+        parameters.count = encoded.count
+        parameters.final = final
+        on term_input_event_from_csi_parameters(parameters) {
+            Key(key) => {
+                assert key.scan_code == expected
+                assert key.action == action
+                assert key.modifiers == modifiers
+                assert key.character == nil
+            }
+
+            else => {
+                assert no, "Expected a decoded CSI key"
+            }
+        }
+    }
+
     term_test_keyboard_reply :: fn (encoded: string, final: u8 = 'u') {
         parameters : TermCsiParameters
         for index in [0 .. encoded.count] {
@@ -1890,6 +1918,64 @@ test {
         term_keyboard_protocol_reply(parameters)
     }
 
+}
+
+test "CSI cursor and tilde keys retain press repeat and release actions" {
+    scratch : arena
+    defer scratch.done()
+    for event_type in [1.as(u32), 2, 3] {
+        action := on event_type^ {
+            2     => TermKeyAction.Repeat
+            3     => TermKeyAction.Release
+            else  => TermKeyAction.Press
+        }
+        encoded         := scratch.pr($"1;8:{event_type^}")
+        modifiers : u32 = TERM_MOD_SHIFT | TERM_MOD_ALT | TERM_MOD_CONTROL
+
+        term_test_csi_action(encoded, 'A', ArrowUp, action, modifiers)
+        term_test_csi_action(encoded, 'B', ArrowDown, action, modifiers)
+        term_test_csi_action(encoded, 'C', ArrowRight, action, modifiers)
+        term_test_csi_action(encoded, 'D', ArrowLeft, action, modifiers)
+        term_test_csi_action(encoded, 'H', Home, action, modifiers)
+        term_test_csi_action(encoded, 'F', End, action, modifiers)
+        term_test_csi_action(scratch.pr($"2;8:{event_type^}"),
+                             '~',
+                             Insert,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"3;8:{event_type^}"),
+                             '~',
+                             Delete,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"5;8:{event_type^}"),
+                             '~',
+                             PageUp,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"6;8:{event_type^}"),
+                             '~',
+                             PageDown,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"15;8:{event_type^}"),
+                             '~',
+                             F5,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"104;8:{event_type^}"),
+                             'u',
+                             H,
+                             action,
+                             modifiers)
+    }
+    term_test_csi_action("", 'A', ArrowUp, TermKeyAction.Press, 0)
+    term_test_csi_action("1;5",
+                         'D',
+                         ArrowLeft,
+                         TermKeyAction.Press,
+                         TERM_MOD_CONTROL)
+    term_test_csi_action("3", '~', Delete, TermKeyAction.Press, 0)
 }
 
 test "keyboard queries distinguish pending, negative and zero flag replies" {

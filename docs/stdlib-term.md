@@ -91,7 +91,12 @@ read_input :: fn (input: TermInput) {
 
 A text-producing key is recorded as a `Key` event followed by a `Character`
 event when the terminal supplies both. Function keys, arrows, and modifiers
-produce key events without character events. Pasted or legacy input may produce
+produce key events without character events. Kitty event-type subparameters
+(`modifier:event-type`) are preserved for the traditional CSI cursor, Home/End
+and tilde-key forms as well as CSI-u reports: 1 is press, 2 repeat, 3 release.
+An omitted action remains a press for legacy compatibility. Applications should
+ignore releases for command execution while still handling repeats as intended.
+Pasted or legacy input may produce
 a character whose scan code is `Unknown`.
 
 The event slice is borrowed from `std.term` and remains valid only during the
