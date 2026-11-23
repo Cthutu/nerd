@@ -10481,11 +10481,22 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         } else if (kind == TK_String || kind == TK_CString) {
             u32 string_index = format_token_string_index(&lexer, i);
             if (string_index < array_count(lexer.strings)) {
-                u32 saved_indent           = g_format_expr_indent_level;
+                u32  saved_indent          = g_format_expr_indent_level;
+                bool saved_suppress_wrap   = g_format_suppress_string_wrap;
                 g_format_expr_indent_level = state.indent_level;
+                // Fallback formatting must preserve declaration-name tokens
+                // too.
+                if (kind == TK_String && i > 0 &&
+                    i + 1 < array_count(lexer.tokens) &&
+                    lexer.tokens[i - 1].kind == TK_Symbol &&
+                    string_eq(format_token_text(&lexer, i - 1), s("test")) &&
+                    lexer.tokens[i + 1].kind == TK_LBrace) {
+                    g_format_suppress_string_wrap = true;
+                }
                 format_emit_string_literal(
                     sb, lexer.strings[string_index], kind == TK_CString);
-                g_format_expr_indent_level = saved_indent;
+                g_format_expr_indent_level    = saved_indent;
+                g_format_suppress_string_wrap = saved_suppress_wrap;
             } else {
                 sb_append_string(sb, format_token_text(&lexer, i));
             }
