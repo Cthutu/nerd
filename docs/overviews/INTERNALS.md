@@ -1928,3 +1928,16 @@ field extraction helper so physical storage reordering preserves field identity.
 C emission uses each HIR child's field-name marker to distinguish matching a
 whole plex enum payload from matching a named payload field, independently of
 whether the variant declaration used braces or parentheses.
+
+
+### LLVM call-local default parameter bindings
+
+Call argument lowering leaves the caller's local values and slots intact.
+Explicit calls do not seed callee parameter bindings in the caller. When trailing
+defaults are needed, LLVM emission uses a temporary local-value/slot/assignment
+context, seeds earlier arguments there, and restores the caller on success or
+failure. This also separates debug-backed caller parameter slots from recursive default
+arguments, whose values must derive from the new call's arguments. Without that
+boundary, recursive slice arguments could replace caller parameters with SSA
+values defined only on a conditional path, failing LLVM dominance verification
+or returning the wrong original parameter after recursion.

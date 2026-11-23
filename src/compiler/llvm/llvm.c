@@ -15672,9 +15672,15 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                 }
                 array_push(args, value);
             }
-            if (callee_function != NULL) {
-                LlvmFunctionContext  default_ctx          = *ctx;
-                LlvmFunctionContext* default_emit_ctx     = ctx;
+            if (callee_function != NULL &&
+                expr->arg_count < callee_function->param_count) {
+                // Default parameter bindings belong to this call, not to the
+                // caller's live locals (which overlap for recursive calls).
+                Array(LlvmLocalValue) caller_locals   = ctx->locals;
+                Array(LlvmLocalSlot) caller_slots     = ctx->slots;
+                Array(u32) caller_assigned_locals     = ctx->assigned_locals;
+                LlvmFunctionContext  default_ctx      = *ctx;
+                LlvmFunctionContext* default_emit_ctx = ctx;
                 Sema                 default_sema_storage = {0};
                 bool                 owns_default_sema    = false;
                 if (callee_hir != ctx->hir) {
@@ -15685,6 +15691,10 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                     default_ctx.slots           = NULL;
                     default_ctx.assigned_locals = NULL;
                     default_emit_ctx            = &default_ctx;
+                } else {
+                    ctx->locals          = NULL;
+                    ctx->slots           = NULL;
+                    ctx->assigned_locals = NULL;
                 }
                 Array(LlvmValue) default_values = NULL;
                 for (u32 i = 0; i < callee_function->param_count; ++i) {
@@ -15719,10 +15729,13 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                             }
                             array_free(default_values);
                             array_free(args);
-                            if (callee_hir != ctx->hir) {
-                                array_free(default_ctx.locals);
-                                array_free(default_ctx.slots);
-                                array_free(default_ctx.assigned_locals);
+                            array_free(default_emit_ctx->locals);
+                            array_free(default_emit_ctx->slots);
+                            array_free(default_emit_ctx->assigned_locals);
+                            if (callee_hir == ctx->hir) {
+                                ctx->locals          = caller_locals;
+                                ctx->slots           = caller_slots;
+                                ctx->assigned_locals = caller_assigned_locals;
                             }
                             return (LlvmValue){0};
                         }
@@ -15761,10 +15774,13 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                     llvm_render_sema_done(&default_sema_storage);
                 }
                 array_free(default_values);
-                if (callee_hir != ctx->hir) {
-                    array_free(default_ctx.locals);
-                    array_free(default_ctx.slots);
-                    array_free(default_ctx.assigned_locals);
+                array_free(default_emit_ctx->locals);
+                array_free(default_emit_ctx->slots);
+                array_free(default_emit_ctx->assigned_locals);
+                if (callee_hir == ctx->hir) {
+                    ctx->locals          = caller_locals;
+                    ctx->slots           = caller_slots;
+                    ctx->assigned_locals = caller_assigned_locals;
                 }
             }
 
