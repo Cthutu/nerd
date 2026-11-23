@@ -158,6 +158,11 @@ This returns `42`. The expression after `on`, called the **subject** or
 only the first matching branch runs. `1, 2` means either pattern selects the
 same body. Use `else` for the fallback and place it last.
 
+Branch expressions may themselves be value-form `on` expressions. An outer
+`else =>` (or `else as name =>`) belongs to the enclosing pattern table, not to
+the nested expression. A trailing `else { ... }` instead handles errors from
+that nested expression's subject.
+
 A value comparison pattern can start with an operator such as `<`, `>=`, or
 `==`. The operator is optional: when omitted, `==` is assumed. For example,
 `0 => 0` means the same as `== 0 => 0`, and `1, 2` means `== 1, == 2`.

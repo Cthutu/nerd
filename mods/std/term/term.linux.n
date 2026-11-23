@@ -136,12 +136,14 @@ on "linux" {
 
     term_keyboard_protocol_enable_impl :: fn () {
         term_keyboard_caps = TermKeyboardCapabilities {
+            kitty_flags     : nil
+            query_complete  : no
             physical_keys   : no
             key_releases    : no
             modifiers       : no
             associated_text : no
         }
-        term_print("\x1b[>31u\x1b[?u")
+        term_print("\x1b[>31u\x1b[?u\x1b[c")
     }
 
     term_keyboard_protocol_disable_impl :: fn () {

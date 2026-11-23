@@ -3211,6 +3211,11 @@ internal bool format_node_kind_is_type_syntax(CstKind kind)
 
 internal bool format_string_should_use_triple_literal(string text)
 {
+    // The physical newline before a closing delimiter is part of the value.
+    // Converting an unterminated last line would silently append a byte.
+    if (text.count == 0 || text.data[text.count - 1] != '\n') {
+        return false;
+    }
     bool has_newline = false;
     bool has_content = false;
     for (usize i = 0; i < text.count; ++i) {
@@ -3270,7 +3275,7 @@ format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
     usize available_width = column < FORMAT_WRAP_WIDTH
                                 ? FORMAT_WRAP_WIDTH - column
                                 : FORMAT_WRAP_WIDTH;
-    if (g_format_suppress_string_wrap || is_c_string ||
+    if (text.count == 0 || g_format_suppress_string_wrap || is_c_string ||
         text.count + 2 <= available_width || format_string_has_newline(text)) {
         if (is_c_string) {
             sb_append_char(sb, 'c');
@@ -5523,6 +5528,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             type = format_render_expr_to_string(arena, cst, lexer, node->b);
         } else {
             if (!format_statement_is_single_line(cst, lexer, node_index) &&
+                payload->kind != CK_StringLiteral &&
                 !format_expr_has_multiline_plex(cst, lexer, node->b)) {
                 return false;
             }
@@ -5973,8 +5979,13 @@ internal bool format_collect_guard_return(const Cst*   cst,
     if (on->kind != COK_Bool || on->branch_count != 1) {
         return false;
     }
-    const CstOnBranch* branch      = &cst->on_branches[on->first_branch];
-    u32                block_index = format_collapsible_expr_block_index(
+    const CstOnBranch* branch = &cst->on_branches[on->first_branch];
+    // Aligned guard rendering only carries condition and return text. An
+    // extraction binder must stay in the general on emitter.
+    if (branch->binder_symbol_handle != U32_MAX) {
+        return false;
+    }
+    u32 block_index = format_collapsible_expr_block_index(
         cst, lexer, branch->expr_node_index);
     u32 return_expr = U32_MAX;
     if (block_index != U32_MAX) {
@@ -10470,11 +10481,22 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         } else if (kind == TK_String || kind == TK_CString) {
             u32 string_index = format_token_string_index(&lexer, i);
             if (string_index < array_count(lexer.strings)) {
-                u32 saved_indent           = g_format_expr_indent_level;
+                u32  saved_indent          = g_format_expr_indent_level;
+                bool saved_suppress_wrap   = g_format_suppress_string_wrap;
                 g_format_expr_indent_level = state.indent_level;
+                // Fallback formatting must preserve declaration-name tokens
+                // too.
+                if (kind == TK_String && i > 0 &&
+                    i + 1 < array_count(lexer.tokens) &&
+                    lexer.tokens[i - 1].kind == TK_Symbol &&
+                    string_eq(format_token_text(&lexer, i - 1), s("test")) &&
+                    lexer.tokens[i + 1].kind == TK_LBrace) {
+                    g_format_suppress_string_wrap = true;
+                }
                 format_emit_string_literal(
                     sb, lexer.strings[string_index], kind == TK_CString);
-                g_format_expr_indent_level = saved_indent;
+                g_format_expr_indent_level    = saved_indent;
+                g_format_suppress_string_wrap = saved_suppress_wrap;
             } else {
                 sb_append_string(sb, format_token_text(&lexer, i));
             }

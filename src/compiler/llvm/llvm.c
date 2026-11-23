@@ -6933,29 +6933,18 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
                      .path_count == 1)) {
             payload = args[0];
         } else if (llvm_type_is_record(ctx->sema, variant_payload_type)) {
-            string variant_payload_type_string =
-                llvm_type_string(ctx, variant_payload_type);
-            string aggregate = s("poison");
+            // Arguments use logical declaration order; record storage may be
+            // reordered for alignment or contain packed/embedded fields.
+            payload = (LlvmValue){.ok         = true,
+                                  .type_index = variant_payload_type,
+                                  .value      = s("zeroinitializer")};
             for (u32 i = 0; i < expr->arg_count; ++i) {
-                LlvmValue arg      = args[i];
-                string    temp     = llvm_temp(ctx);
-                string    arg_type = llvm_type_string(ctx, arg.type_index);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = insertvalue " STRINGP " " STRINGP
-                          ", " STRINGP " " STRINGP ", %u\n",
-                          STRINGV(temp),
-                          STRINGV(variant_payload_type_string),
-                          STRINGV(aggregate),
-                          STRINGV(arg_type),
-                          STRINGV(arg.value),
-                          i);
-                aggregate = temp;
+                payload = llvm_insert_record_field(ctx, payload, i, args[i]);
+                if (!payload.ok) {
+                    array_free(args);
+                    return payload;
+                }
             }
-            payload = (LlvmValue){
-                .ok         = true,
-                .type_index = variant_payload_type,
-                .value      = aggregate,
-            };
         } else {
             payload = args[0];
         }
@@ -7051,6 +7040,12 @@ internal void llvm_bind_local_value(LlvmFunctionContext* ctx,
 
     LlvmValue local_value  = value;
     local_value.type_index = llvm_local_type(ctx, local_index);
+    // A void success binder records a matched variant, not a stored payload.
+    // In particular, debug builds must not materialise an `alloca void`.
+    if (llvm_type_is_void(ctx->sema, local_value.type_index)) {
+        llvm_set_local_value(ctx, local_index, local_value);
+        return;
+    }
     if (ctx->debug != NULL || llvm_local_is_assigned(ctx, local_index)) {
         LlvmLocalSlot* slot =
             llvm_ensure_local_slot(ctx, local_index, local_value.type_index);
@@ -15677,9 +15672,15 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                 }
                 array_push(args, value);
             }
-            if (callee_function != NULL) {
-                LlvmFunctionContext  default_ctx          = *ctx;
-                LlvmFunctionContext* default_emit_ctx     = ctx;
+            if (callee_function != NULL &&
+                expr->arg_count < callee_function->param_count) {
+                // Default parameter bindings belong to this call, not to the
+                // caller's live locals (which overlap for recursive calls).
+                Array(LlvmLocalValue) caller_locals   = ctx->locals;
+                Array(LlvmLocalSlot) caller_slots     = ctx->slots;
+                Array(u32) caller_assigned_locals     = ctx->assigned_locals;
+                LlvmFunctionContext  default_ctx      = *ctx;
+                LlvmFunctionContext* default_emit_ctx = ctx;
                 Sema                 default_sema_storage = {0};
                 bool                 owns_default_sema    = false;
                 if (callee_hir != ctx->hir) {
@@ -15690,6 +15691,10 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                     default_ctx.slots           = NULL;
                     default_ctx.assigned_locals = NULL;
                     default_emit_ctx            = &default_ctx;
+                } else {
+                    ctx->locals          = NULL;
+                    ctx->slots           = NULL;
+                    ctx->assigned_locals = NULL;
                 }
                 Array(LlvmValue) default_values = NULL;
                 for (u32 i = 0; i < callee_function->param_count; ++i) {
@@ -15724,10 +15729,13 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                             }
                             array_free(default_values);
                             array_free(args);
-                            if (callee_hir != ctx->hir) {
-                                array_free(default_ctx.locals);
-                                array_free(default_ctx.slots);
-                                array_free(default_ctx.assigned_locals);
+                            array_free(default_emit_ctx->locals);
+                            array_free(default_emit_ctx->slots);
+                            array_free(default_emit_ctx->assigned_locals);
+                            if (callee_hir == ctx->hir) {
+                                ctx->locals          = caller_locals;
+                                ctx->slots           = caller_slots;
+                                ctx->assigned_locals = caller_assigned_locals;
                             }
                             return (LlvmValue){0};
                         }
@@ -15766,10 +15774,13 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                     llvm_render_sema_done(&default_sema_storage);
                 }
                 array_free(default_values);
-                if (callee_hir != ctx->hir) {
-                    array_free(default_ctx.locals);
-                    array_free(default_ctx.slots);
-                    array_free(default_ctx.assigned_locals);
+                array_free(default_emit_ctx->locals);
+                array_free(default_emit_ctx->slots);
+                array_free(default_emit_ctx->assigned_locals);
+                if (callee_hir == ctx->hir) {
+                    ctx->locals          = caller_locals;
+                    ctx->slots           = caller_slots;
+                    ctx->assigned_locals = caller_assigned_locals;
                 }
             }
 

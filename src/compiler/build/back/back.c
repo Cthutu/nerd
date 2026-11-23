@@ -58,16 +58,56 @@ internal cstr back_end_cstr(Arena* arena, string text)
     return copy;
 }
 
+internal bool back_end_hir_extern_is_referenced(const Hir* hir,
+                                                u32        external_symbol)
+{
+    for (u32 b = 0; b < array_count(hir->bindings); ++b) {
+        const HirBinding* binding = &hir->bindings[b];
+        u32               symbol  = U32_MAX;
+        if (binding->kind == HIR_BINDING_Function &&
+            binding->target_index < array_count(hir->functions)) {
+            const HirFunction* function =
+                &hir->functions[binding->target_index];
+            if (function->kind == HIR_FUNCTION_Ffi) {
+                symbol = function->ffi_symbol_handle;
+            }
+        } else if (binding->kind == HIR_BINDING_Import &&
+                   binding->target_index < array_count(hir->imports)) {
+            symbol = hir->imports[binding->target_index].ffi_symbol_handle;
+        }
+        if (symbol != external_symbol) {
+            continue;
+        }
+        for (u32 e = 0; e < array_count(hir->exprs); ++e) {
+            const HirExpr* expr = &hir->exprs[e];
+            if ((expr->kind == HIR_EXPR_LocalRef &&
+                 ((expr->ref_kind == HIR_REF_Binding && expr->ref_index == b) ||
+                  (expr->ref_kind == HIR_REF_Decl &&
+                   expr->symbol_handle == binding->symbol_handle))) ||
+                (expr->kind == HIR_EXPR_Field &&
+                 expr->symbol_handle == binding->symbol_handle)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
                                                     const ProgramInfo* program,
-                                                    cstr separator)
+                                                    cstr separator,
+                                                    bool include_exports)
 {
+    Array(string) included = NULL;
     for (u32 module_index = 0; module_index < array_count(program->modules);
          ++module_index) {
         const Hir* hir = &program->modules[module_index].front_end.hir;
         for (u32 i = 0; i < array_count(hir->externs); ++i) {
-            string library = hir->externs[i].library;
-            if (library.count == 0) {
+            const HirExtern* external = &hir->externs[i];
+            string           library  = external->library;
+            if (library.count == 0 ||
+                (!include_exports && !back_end_hir_extern_is_referenced(
+                                         hir, external->symbol_handle))) {
                 continue;
             }
             if (string_eq(library, s("c")) || string_eq(library, s("nrt"))) {
@@ -79,13 +119,7 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
             }
 #endif
 #if OS_WINDOWS
-            // The native linker configuration supplies the Windows CRT. Naming
-            // it as an FFI library resolves the DLL for symbol validation, but
-            // there is no matching `ucrtbase.lib` import library, and an
-            // explicit
-            // `-lucrt` clashes with the statically linked `libucrt`. Treat the
-            // CRT like `c`: let the configured runtime libraries provide the
-            // symbols.
+            // The native linker configuration supplies the Windows CRT.
             if (string_eq(library, s("ucrtbase")) ||
                 string_eq(library, s("ucrtbase.dll")) ||
                 string_eq(library, s("ucrt")) ||
@@ -94,31 +128,21 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
                 continue;
             }
 #endif
-
             bool already_added = false;
-            for (u32 previous_module = 0; previous_module <= module_index;
-                 ++previous_module) {
-                const Hir* previous_hir =
-                    &program->modules[previous_module].front_end.hir;
-                u32 end = previous_module == module_index
-                              ? i
-                              : (u32)array_count(previous_hir->externs);
-                for (u32 j = 0; j < end; ++j) {
-                    if (string_eq(previous_hir->externs[j].library, library)) {
-                        already_added = true;
-                        break;
-                    }
-                }
-                if (already_added) {
+            for (u32 j = 0; j < array_count(included); ++j) {
+                if (string_eq(included[j], library)) {
+                    already_added = true;
                     break;
                 }
             }
             if (!already_added) {
+                array_push(included, library);
                 sb_format(
                     link_flags, "%s-l" STRINGP, separator, STRINGV(library));
             }
         }
     }
+    array_free(included);
 }
 
 #if OS_LINUX
@@ -1233,7 +1257,7 @@ internal bool back_end_link_native(Arena*                    arena,
 #if OS_WINDOWS
     StringBuilder libraries = {0};
     sb_init(&libraries, arena);
-    back_end_append_hir_extern_link_flags(&libraries, program, " ");
+    back_end_append_hir_extern_link_flags(&libraries, program, " ", shared);
     string flags = sb_to_string(&libraries);
     sb_init(&command, arena);
     sb_format(&command,
@@ -1289,7 +1313,7 @@ internal bool back_end_link_native(Arena*                    arena,
                        "-L/usr/lib64 -L/lib64");
 #    endif
         sb_append_cstr(&command, " -L/usr/lib -L/lib");
-        back_end_append_hir_extern_link_flags(&command, program, " ");
+        back_end_append_hir_extern_link_flags(&command, program, " ", shared);
         ShellResult native =
             back_end_capture_tool(arena, sb_to_string(&command));
         if (native.exit_code == 0) {
@@ -1351,7 +1375,7 @@ internal bool back_end_link_native(Arena*                    arena,
         sb_format(&command, " --dynamic-linker \"%s\" \"%s\"", loader, start);
     }
     sb_format(&command, " \"%s\" \"%s\" \"%s\"", init, object, runtime);
-    back_end_append_hir_extern_link_flags(&command, program, " ");
+    back_end_append_hir_extern_link_flags(&command, program, " ", shared);
     sb_format(&command, " -lc -lm -l:libgcc_s.so.1 \"%s\"", fini);
 #elif OS_MACOS
     ShellResult sdk =
@@ -1377,7 +1401,7 @@ internal bool back_end_link_native(Arena*                    arena,
     if (!back_end_append_library_paths(&command, program, false)) {
         return false;
     }
-    back_end_append_hir_extern_link_flags(&command, program, " ");
+    back_end_append_hir_extern_link_flags(&command, program, " ", shared);
 #else
     return error_runtime("Direct LLVM linking is not configured for this host");
 #endif
@@ -1936,7 +1960,11 @@ internal bool back_end_print_c_options(const ProgramInfo*        program,
             arena_done(&arena);
             return false;
         }
-        back_end_append_hir_extern_link_flags(&flags, program, " ");
+        back_end_append_hir_extern_link_flags(
+            &flags,
+            program,
+            " ",
+            artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary);
     }
     string output = sb_to_string(&flags);
     bool   ok = fwrite(output.data, 1, output.count, stdout) == output.count &&

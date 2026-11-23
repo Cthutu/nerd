@@ -1,5 +1,24 @@
 # Internals
 
+CST assignment targets include slices, matching executable slice-copy assignment
+syntax. Rejecting `CK_Slice` caused otherwise valid modules to use token-format
+fallback, losing structured alignment and wrapping. `slice-assignment.f` covers
+bounded/open-ended targets plus ordinary following declarations.
+
+Empty string literals always emit their two quotes, even when fewer than two
+columns remain before the formatter's wrap boundary. The non-empty segmentation
+loop cannot represent an empty literal; it must never receive that case, including
+when rendering function-signature width probes. `empty-string-boundary.f` covers
+an empty default argument at this boundary without losing source validity.
+
+Local-binding inference retains binding and AST node indices across recursive
+resolution. Generic function/method instantiation can append locals and cloned
+AST nodes, invalidating pointers into either table. Inference reacquires local
+rows after recursive calls, clears cycle flags through the saved node index,
+and selects default initialisers without retaining a local pointer across type
+resolution. `local-inference-growth.t` exercises nested method inference while
+instantiation grows the local table, including distinct concrete specialisations.
+
 Generic type aliases are registered before concrete aliases instantiate their
 fields, preserving forward generic references across module parts. Type-expression
 marking descends through expression wrappers, and generic array/tuple validation
@@ -14,6 +33,14 @@ constraint table records a fixed-array type with the literal's own count, so
 slice context does not change a local's storage or ownership. Matching explicitly
 typed record literals also propagate their field context. Normal inference
 retains length, annotation, cast, field and range validation.
+
+HIR lowers record literal/update and named enum-payload fields with their declared
+field types, explicitly constructing optional/result success wrappers rather than
+retagging payload scalars as aggregates. LLVM packs named enum payloads through
+logical record-field insertion, preserving alignment-based storage reordering and
+packed/embedded field handling rather than assuming declaration indices are LLVM
+aggregate indices. `optional-record-fields.t` covers literals, updates, optional
+numbers/strings and result payloads across both backends.
 
 The usage-constraint table also records result types for empty contextual casts.
 Local aliases, arithmetic and tuple projections share those constraints without
@@ -73,6 +100,43 @@ matching the AST parser's type-as-initialiser lookahead. The formatter retains
 the complete type for invalid/unfinished source instead of splitting its
 element type into another statement. This does not make array types valid
 runtime initialisers; newline-separated array literals keep their boundaries.
+
+HIR field lowering makes implicit pointer dereferences explicit for
+dynamic-array receivers, including pointer chains. Both backends therefore
+see the same collection lvalue for intrinsic methods and header fields.
+
+Loop header references are resolved after function-local collection, once
+pattern and guard binders exist and branch block scopes have been reparented.
+The deferred header pass skips nested function bodies. Resolving a loop as a
+branch expression also reparents its pre-collected loop scope.
+
+The value-form `on` parser leaves an enclosing table's `else =>` and
+`else as name =>` untouched when completing a nested branch expression;
+only a trailing braced `else` is consumed as that expression's error handler.
+
+Executable link flags include an FFI library only when HIR expressions
+reference one of its function bindings (directly or through imports/module
+fields). Mere re-exports do not require unused foreign libraries. Shared-library
+outputs retain declared libraries for their exported FFI wrappers. Deduplication
+uses the libraries actually included, not earlier unused declarations.
+
+Payload-bearing enum constructor calls use the unwrapped success type as
+their contextual enum when the expected type is optional or result. The normal
+wrapper conversion still wraps the constructed enum after payload checking.
+
+String formatting uses physical triple-quoted lines only when the original
+value already ends with a newline; otherwise ordinary escaped literals retain
+the unterminated final line. Carriage-return bytes also prevent conversion.
+
+Guard-return alignment only groups plain boolean guards. Extraction guards
+with explicit binders stay with the general `on` emitter, which preserves
+bracketed payload bindings when collapsing single-return blocks.
+
+LLVM and C pattern binders for void optional/result success payloads retain
+their semantic binding without allocating or storing a payload. Debug
+materialisation must not introduce `alloca void`, and generated C must not refer
+to absent void payload fields. Success/failure dispatch still evaluates the
+subject once and selects branches normally.
 
 Missing-return validation distinguishes explicit `void` from value-producing
 return types. Both implicit and explicit `void` bodies may fall through; HIR and
@@ -1913,3 +1977,16 @@ field extraction helper so physical storage reordering preserves field identity.
 C emission uses each HIR child's field-name marker to distinguish matching a
 whole plex enum payload from matching a named payload field, independently of
 whether the variant declaration used braces or parentheses.
+
+
+### LLVM call-local default parameter bindings
+
+Call argument lowering leaves the caller's local values and slots intact.
+Explicit calls do not seed callee parameter bindings in the caller. When trailing
+defaults are needed, LLVM emission uses a temporary local-value/slot/assignment
+context, seeds earlier arguments there, and restores the caller on success or
+failure. This also separates debug-backed caller parameter slots from recursive default
+arguments, whose values must derive from the new call's arguments. Without that
+boundary, recursive slice arguments could replace caller parameters with SSA
+values defined only on a conditional path, failing LLVM dominance verification
+or returning the wrong original parameter after recursion.

@@ -1920,7 +1920,11 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             return false;
         }
 
-        if (ast_peek_kind_at(state, 0) == TK_else) {
+        // An enclosing table's `else =>` / `else as name =>` is not
+        // the braced error handler belonging to this nested value-on.
+        if (ast_peek_kind_at(state, 0) == TK_else &&
+            ast_peek_kind_at(state, 1) != TK_FatArrow &&
+            ast_peek_kind_at(state, 1) != TK_as) {
             if (!ast_expect_token(state, TK_else)) {
                 array_free(branches);
                 return false;

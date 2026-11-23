@@ -250,6 +250,10 @@ pub TermKeyboard :: plex {
 -- Describes which keyboard information the active terminal backend can report
 -- reliably.
 pub TermKeyboardCapabilities :: plex {
+    -- nil until a Kitty status reply arrives; zero is a valid reply.
+    kitty_flags     ?u32
+    -- Native input is complete immediately; VT completes after status or DA.
+    query_complete  bool
     physical_keys   bool
     key_releases    bool
     modifiers       bool
@@ -1432,13 +1436,12 @@ term_csi_modifier_flags :: fn (modifier: u32) -> u32 {
 }
 
 term_input_event_from_modified_key :: fn (key      : ?TermScanCode,
-                                          modifier : u32) -> TermInputEvent {
+                                          modifier : u32,
+                                          action   : TermKeyAction = TermKeyAction.Press) -> TermInputEvent {
     return on key {
         code => {
             flags := term_csi_modifier_flags(modifier)
-            return term_key_event(code,
-                                  action = TermKeyAction.Press,
-                                  modifiers = flags)
+            return term_key_event(code, action = action, modifiers = flags)
         }
 
         else => TermInputEvent.None
@@ -1580,23 +1583,25 @@ term_scan_code_from_kitty_key :: fn (key: u32) -> TermScanCode {
     }
 }
 
+term_csi_key_action :: fn (parameters: TermCsiParameters) -> TermKeyAction {
+    return on term_csi_parameter(parameters, 1, 1, fallback = 1) {
+        2     => TermKeyAction.Repeat
+        3     => TermKeyAction.Release
+        else  => TermKeyAction.Press
+    }
+}
+
 term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEvent {
     key             := term_csi_parameter(parameters, 0, 0)
     base_layout_key := term_csi_parameter(parameters, 0, 2)
 
     on base_layout_key == 0 => base_layout_key = key
 
-    modifier_parameter := term_csi_parameter(parameters, 1, 0, fallback = 1)
-    modifiers          := on modifier_parameter > 0 => modifier_parameter - 1 else 0
-    event_type         := term_csi_parameter(parameters, 1, 1, fallback = 1)
-
-    action := on event_type == 2
-        =>   TermKeyAction.Repeat
-        else on (event_type == 3)
-        =>   TermKeyAction.Release
-        else TermKeyAction.Press
-    text             := term_csi_parameter(parameters, 2, 0)
-    character : ?u32 = nil
+    modifier_parameter        := term_csi_parameter(parameters, 1, 0, fallback = 1)
+    modifiers                 := on modifier_parameter > 0 => modifier_parameter - 1 else 0
+    action                    := term_csi_key_action(parameters)
+    text                      := term_csi_parameter(parameters, 2, 0)
+    character          : ?u32 = nil
 
     on text > 0 => character = text
     subfield : u32 = 1
@@ -1630,7 +1635,9 @@ term_input_event_from_csi_parameters :: fn (parameters: TermCsiParameters) -> Te
     key := on parameters.final == '~'
         =>   term_csi_tilde_key(number)
         else term_csi_final_key(parameters.final)
-    return term_input_event_from_modified_key(key, modifier)
+    return term_input_event_from_modified_key(key,
+                                              modifier,
+                                              action = term_csi_key_action(parameters))
 }
 
 term_mouse_button_from_sgr :: fn (button_code: u32) -> u32 {
@@ -1715,6 +1722,33 @@ term_read_csi_sequence :: fn () -> ?TermScanCode {
     }
 }
 
+-- Kitty's query is followed by primary DA; its reply completes a negative probe
+-- without guessing from TERM or treating a timeout as proof of absence.
+term_keyboard_protocol_reply :: fn (parameters: TermCsiParameters) {
+    on parameters.count < 2 || parameters.bytes[0] != '?' => return
+    on parameters.final == 'c' => {
+        term_keyboard_caps.query_complete = yes
+        return
+    }
+    on parameters.final != 'u' => return
+    flags : u32 = 0
+    for index in [1 .. parameters.count] {
+        byte := parameters.bytes[index]
+        on byte < '0' || byte > '9' => return
+        digit := (byte - '0').as(u32)
+        on flags > (0xffffffff.as(u32) - digit) / 10 => return
+        flags = flags * 10 + digit
+    }
+    term_keyboard_caps.kitty_flags = flags
+    term_keyboard_caps.query_complete = yes
+    -- Alternate layouts alone do not report every physical key; release
+    -- reporting alone omits text keys and Enter/Tab/Backspace releases.
+    term_keyboard_caps.physical_keys = (flags & 12) == 12
+    term_keyboard_caps.key_releases = (flags & 10) == 10
+    term_keyboard_caps.modifiers = (flags & 9) != 0
+    term_keyboard_caps.associated_text = (flags & 24) == 24
+}
+
 term_read_csi_input_sequence :: fn () -> TermInputEvent {
     first := term_read_byte()
     on first == 0 => return TermInputEvent.None
@@ -1722,15 +1756,8 @@ term_read_csi_input_sequence :: fn () -> TermInputEvent {
     on first == '<' => return term_read_sgr_mouse_sequence()
 
     on first == '?' => {
-        response := term_read_decimal_until('u', 'u')
-        on response.0 &&
-            response.2 == 'u' => {
-            flags := response.1
-            term_keyboard_caps.physical_keys = (flags & 4) != 0
-            term_keyboard_caps.key_releases = (flags & 2) != 0
-            term_keyboard_caps.modifiers = (flags & 1) != 0
-            term_keyboard_caps.associated_text = (flags & 16) != 0
-        }
+        parameters := term_read_csi_parameters(first)
+        term_keyboard_protocol_reply(parameters)
         return TermInputEvent.None
     }
 
@@ -1852,4 +1879,148 @@ test "terminal UTF-8 decoding advances past malformed bytes" {
     assert term_utf8_decode_at(text, 2).1 == 1
     assert term_utf8_decode_at(text, 3).0 == 'B'
     assert term_utf8_decode_at(text, 4).1 == 0
+}
+
+test {
+
+    term_test_csi_action :: fn (encoded   : string,
+                                final     : u8,
+                                expected  : TermScanCode,
+                                action    : TermKeyAction,
+                                modifiers : u32) {
+        parameters : TermCsiParameters
+        for index in [0 .. encoded.count] {
+            parameters.bytes[index] = encoded[index]
+        }
+        parameters.count = encoded.count
+        parameters.final = final
+        on term_input_event_from_csi_parameters(parameters) {
+            Key(key) => {
+                assert key.scan_code == expected
+                assert key.action == action
+                assert key.modifiers == modifiers
+                assert key.character == nil
+            }
+
+            else => {
+                assert no, "Expected a decoded CSI key"
+            }
+        }
+    }
+
+    term_test_keyboard_reply :: fn (encoded: string, final: u8 = 'u') {
+        parameters : TermCsiParameters
+        for index in [0 .. encoded.count] {
+            parameters.bytes[index] = encoded[index]
+        }
+        parameters.count = encoded.count
+        parameters.final = final
+        term_keyboard_protocol_reply(parameters)
+    }
+
+}
+
+test "CSI cursor and tilde keys retain press repeat and release actions" {
+    scratch : arena
+    defer scratch.done()
+    for event_type in [1.as(u32), 2, 3] {
+        action := on event_type^ {
+            2     => TermKeyAction.Repeat
+            3     => TermKeyAction.Release
+            else  => TermKeyAction.Press
+        }
+        encoded         := scratch.pr($"1;8:{event_type^}")
+        modifiers : u32 = TERM_MOD_SHIFT | TERM_MOD_ALT | TERM_MOD_CONTROL
+
+        term_test_csi_action(encoded, 'A', ArrowUp, action, modifiers)
+        term_test_csi_action(encoded, 'B', ArrowDown, action, modifiers)
+        term_test_csi_action(encoded, 'C', ArrowRight, action, modifiers)
+        term_test_csi_action(encoded, 'D', ArrowLeft, action, modifiers)
+        term_test_csi_action(encoded, 'H', Home, action, modifiers)
+        term_test_csi_action(encoded, 'F', End, action, modifiers)
+        term_test_csi_action(scratch.pr($"2;8:{event_type^}"),
+                             '~',
+                             Insert,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"3;8:{event_type^}"),
+                             '~',
+                             Delete,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"5;8:{event_type^}"),
+                             '~',
+                             PageUp,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"6;8:{event_type^}"),
+                             '~',
+                             PageDown,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"15;8:{event_type^}"),
+                             '~',
+                             F5,
+                             action,
+                             modifiers)
+        term_test_csi_action(scratch.pr($"104;8:{event_type^}"),
+                             'u',
+                             H,
+                             action,
+                             modifiers)
+    }
+    term_test_csi_action("", 'A', ArrowUp, TermKeyAction.Press, 0)
+    term_test_csi_action("1;5",
+                         'D',
+                         ArrowLeft,
+                         TermKeyAction.Press,
+                         TERM_MOD_CONTROL)
+    term_test_csi_action("3", '~', Delete, TermKeyAction.Press, 0)
+}
+
+test "keyboard queries distinguish pending, negative and zero flag replies" {
+    saved := term_keyboard_caps
+    defer term_keyboard_caps = saved
+    term_keyboard_caps = { ... }
+    assert !term_keyboard_caps.query_complete && term_keyboard_caps.kitty_flags == nil
+    term_test_keyboard_reply("?1;2", final = 'c')
+    assert term_keyboard_caps.query_complete && term_keyboard_caps.kitty_flags == nil
+    term_test_keyboard_reply("?0")
+    assert term_keyboard_caps.query_complete && term_keyboard_caps.kitty_flags == 0.as(u32)
+    assert !term_keyboard_caps.physical_keys && !term_keyboard_caps.key_releases
+    assert !term_keyboard_caps.modifiers && !term_keyboard_caps.associated_text
+    for malformed in [
+    "?",
+    "?1;2",
+    "?-1",
+    "?4294967296",
+    "?99999999999999999999"
+        +"9",
+] {
+        term_keyboard_caps = { ... }
+        term_test_keyboard_reply(malformed^)
+        assert !term_keyboard_caps.query_complete && term_keyboard_caps.kitty_flags == nil
+    }
+    term_test_keyboard_reply("?25", final = 'h')
+    assert !term_keyboard_caps.query_complete
+}
+
+test "partial Kitty flags do not overclaim keyboard capabilities" {
+    saved := term_keyboard_caps
+    defer term_keyboard_caps = saved
+    term_keyboard_caps = { ... }
+    term_test_keyboard_reply("?7")
+    assert !term_keyboard_caps.physical_keys && !term_keyboard_caps.key_releases
+    assert term_keyboard_caps.modifiers && !term_keyboard_caps.associated_text
+    term_test_keyboard_reply("?10")
+    assert !term_keyboard_caps.physical_keys && term_keyboard_caps.key_releases
+    assert term_keyboard_caps.modifiers && !term_keyboard_caps.associated_text
+    term_test_keyboard_reply("?16")
+    assert !term_keyboard_caps.associated_text
+    term_test_keyboard_reply("?31")
+    assert term_keyboard_caps.physical_keys && term_keyboard_caps.key_releases
+    assert term_keyboard_caps.modifiers && term_keyboard_caps.associated_text
+    assert term_keyboard_caps.kitty_flags == 31.as(u32)
+    term_test_keyboard_reply("?1;2", final = 'c')
+    assert term_keyboard_caps.kitty_flags == 31.as(u32)
 }

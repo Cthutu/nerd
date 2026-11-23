@@ -25,6 +25,10 @@ pattern ::= IDENT
 matches against a runtime value or expression instead of binding a new name.
 Branch-level `as name` binds the scrutinee for that branch.
 
+When a branch body is another value-form `on`, an enclosing table's
+`else =>` or `else as name =>` remains a branch head of that enclosing table.
+It is not the nested expression's trailing braced error handler.
+
 ## Structural Patterns
 
 Tuple patterns match tuple arity. Plex patterns match named fields. Typed plex
