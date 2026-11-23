@@ -25,5 +25,5 @@ error: Unknown member `input` for `TermSimulate`
   |       ^^^^^ `TermSimulate` has no field or method named `input`
 7 | }
   |
-note: Type `TermSimulate` is defined here (__REPO__/mods/std/term/term.n:271:5)
+note: Type `TermSimulate` is defined here (__REPO__/mods/std/term/term.n:275:5)
 help: Use a field or method that exists on `TermSimulate`.

@@ -468,6 +468,8 @@ on "windows" {
     term_keyboard_protocol_enable_impl :: fn () {
         on term_input_is_console() => {
             term_keyboard_caps = TermKeyboardCapabilities {
+                kitty_flags     : nil
+                query_complete  : yes
                 physical_keys   : yes
                 key_releases    : yes
                 modifiers       : yes
@@ -475,12 +477,14 @@ on "windows" {
             }
         } else {
             term_keyboard_caps = TermKeyboardCapabilities {
+                kitty_flags     : nil
+                query_complete  : no
                 physical_keys   : no
                 key_releases    : no
                 modifiers       : no
                 associated_text : no
             }
-            term_print("\x1b[>31u\x1b[?u")
+            term_print("\x1b[>31u\x1b[?u\x1b[c")
         }
     }
 

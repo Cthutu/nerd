@@ -143,7 +143,22 @@ on !caps.key_releases => {
 
 The capability fields are `physical_keys`, `key_releases`, `modifiers`, and
 `associated_text`. They describe what the active input backend can report, not
-what the application requested.
+what the application requested. Kitty alternate-key and release flags require
+all-key reporting before claiming reliable physical/held-key support; associated
+text requires both all-key and text reporting. Disambiguation or all-key reporting
+provides modifiers.
+
+`kitty_flags: ?u32` retains the actual Kitty status reply, including zero. `nil`
+means no Kitty status reply has been received, not necessarily lack of support.
+`query_complete` becomes true on a Kitty status reply or the following primary
+Device Attributes (DA) reply. A DA reply without a Kitty reply completes a negative
+probe for the current terminal/multiplexer path. No reply leaves detection pending,
+with conservative legacy capabilities; no timeout is treated as proof of absence.
+Native Windows console input is complete immediately, with `kitty_flags == nil`.
+VT backends request all five Kitty enhancements, query status, then request DA.
+Private CSI replies are consumed through their final byte so DA parameters do not
+leak into application text. Terminal-level key remappings may still collapse keys,
+even when the enhanced protocol is available.
 
 ## Key Names
 

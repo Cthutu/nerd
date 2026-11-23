@@ -4333,11 +4333,11 @@ simulate :: fn (s: TermSimulate) {
       "uri": "file:///home/matt/nerd/mods/std/term/term.linux.n",
       "range": {
         "start": {
-          "line": 679,
+          "line": 681,
           "character": 4
         },
         "end": {
-          "line": 679,
+          "line": 681,
           "character": 13
         }
       }
@@ -4350,11 +4350,11 @@ simulate :: fn (s: TermSimulate) {
       "uri": "file:///home/matt/nerd/mods/std/term/term.n",
       "range": {
         "start": {
-          "line": 270,
+          "line": 274,
           "character": 4
         },
         "end": {
-          "line": 270,
+          "line": 274,
           "character": 16
         }
       }
