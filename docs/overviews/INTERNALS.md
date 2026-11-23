@@ -1,5 +1,10 @@
 # Internals
 
+CST assignment targets include slices, matching executable slice-copy assignment
+syntax. Rejecting `CK_Slice` caused otherwise valid modules to use token-format
+fallback, losing structured alignment and wrapping. `slice-assignment.f` covers
+bounded/open-ended targets plus ordinary following declarations.
+
 Empty string literals always emit their two quotes, even when fewer than two
 columns remain before the formatter's wrap boundary. The non-empty segmentation
 loop cannot represent an empty literal; it must never receive that case, including

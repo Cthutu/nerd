@@ -865,6 +865,7 @@ internal bool cst_node_can_be_assignment_target(const Cst* cst, u32 node_index)
     case CK_SymbolRef:
     case CK_Field:
     case CK_Index:
+    case CK_Slice:
     case CK_Deref:
         return true;
     case CK_Group:
