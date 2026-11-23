@@ -1,5 +1,11 @@
 # Internals
 
+Empty string literals always emit their two quotes, even when fewer than two
+columns remain before the formatter's wrap boundary. The non-empty segmentation
+loop cannot represent an empty literal; it must never receive that case, including
+when rendering function-signature width probes. `empty-string-boundary.f` covers
+an empty default argument at this boundary without losing source validity.
+
 Local-binding inference retains binding and AST node indices across recursive
 resolution. Generic function/method instantiation can append locals and cloned
 AST nodes, invalidating pointers into either table. Inference reacquires local

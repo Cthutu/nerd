@@ -3275,7 +3275,7 @@ format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
     usize available_width = column < FORMAT_WRAP_WIDTH
                                 ? FORMAT_WRAP_WIDTH - column
                                 : FORMAT_WRAP_WIDTH;
-    if (g_format_suppress_string_wrap || is_c_string ||
+    if (text.count == 0 || g_format_suppress_string_wrap || is_c_string ||
         text.count + 2 <= available_width || format_string_has_newline(text)) {
         if (is_c_string) {
             sb_append_char(sb, 'c');
