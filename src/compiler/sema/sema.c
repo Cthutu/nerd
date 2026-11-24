@@ -23450,25 +23450,42 @@ internal bool sema_binary_result_type(const Lexer* lexer,
         }
     }
 
+    // A concrete sibling constrains the entire untyped operand, not only the
+    // types compared here. Otherwise nested arithmetic retains its default
+    // width and reaches lowering with differently typed SSA operands.
     if (sema_type_is_concrete_integer(sema, lhs_type) &&
         rhs_type != sema_no_type() &&
         sema->types[rhs_type].kind == STK_UntypedInteger) {
-        rhs_type = lhs_type;
+        if (!sema_infer_node_type(
+                lexer, ast, sema, node->b, lhs_type, &rhs_type)) {
+            return false;
+        }
     } else if (sema_type_is_concrete_integer(sema, rhs_type) &&
                lhs_type != sema_no_type() &&
                sema->types[lhs_type].kind == STK_UntypedInteger) {
-        lhs_type = rhs_type;
+        if (!sema_infer_node_type(
+                lexer, ast, sema, node->a, rhs_type, &lhs_type)) {
+            return false;
+        }
     } else if (sema_type_is_concrete_float(sema, lhs_type) &&
                rhs_type != sema_no_type() &&
                (sema->types[rhs_type].kind == STK_UntypedFloat ||
                 sema->types[rhs_type].kind == STK_UntypedInteger)) {
-        rhs_type = lhs_type;
+        if (!sema_infer_node_type(
+                lexer, ast, sema, node->b, lhs_type, &rhs_type)) {
+            return false;
+        }
     } else if (sema_type_is_concrete_float(sema, rhs_type) &&
                lhs_type != sema_no_type() &&
                (sema->types[lhs_type].kind == STK_UntypedFloat ||
                 sema->types[lhs_type].kind == STK_UntypedInteger)) {
-        lhs_type = rhs_type;
+        if (!sema_infer_node_type(
+                lexer, ast, sema, node->a, rhs_type, &lhs_type)) {
+            return false;
+        }
     }
+
+    node = &ast->nodes[node_index];
 
     if ((node->kind == AK_Equal || node->kind == AK_NotEqual) &&
         lhs_type != rhs_type) {

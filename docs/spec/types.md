@@ -41,6 +41,9 @@ bindings preserve these untyped types. An untyped integer can acquire a
 concrete integer or floating-point type from an annotation, parameter,
 return type, or numeric operand. An untyped float can acquire a concrete
 floating-point type; conversion to an integer requires an explicit cast.
+These rules constrain whole untyped compound operands, including their nested
+arithmetic nodes, before choosing storage widths. For example, in
+`65536 * 65536 + offset` with `offset: u64`, the product is computed as `u64`.
 These rules do not allow implicit conversion between concrete numeric types.
 
 For unannotated numeric locals, concrete usage constraints are collected before

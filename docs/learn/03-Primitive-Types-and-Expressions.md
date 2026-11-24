@@ -195,6 +195,10 @@ base : u64 : 40
 total :: base + 2
 ```
 
+The same context applies to an entire untyped compound operand. With
+`offset: u64`, `65536 * 65536 + offset` computes the product as `u64` before
+adding the offset, rather than first using the default `i32` width.
+
 Here, `2` takes the type `u64`, and `total` is a `u64`. Combining a concrete
 `u64` with a concrete `i32` requires an explicit conversion; Nerd does not use
 C's usual arithmetic conversions to silently choose a common type.

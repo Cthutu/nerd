@@ -19,6 +19,15 @@ and selects default initialisers without retaining a local pointer across type
 resolution. `local-inference-growth.t` exercises nested method inference while
 instantiation grows the local table, including distinct concrete specialisations.
 
+Numeric binary inference revisits an untyped operand with its concrete sibling's
+numeric type before lowering. This constrains every nested arithmetic node and
+validates literal ranges rather than changing only the result-type comparison.
+Without this step, an index such as `22 * 80 + index` could emit an `i32` product
+as an operand of an `i64` addition; wide constant products could also overflow
+before reaching their contextual width. `contextual-numeric-operands.t` covers
+indexing, both operand orders, comparisons, signed/narrow integers and floats on
+LLVM and C backends.
+
 Generic type aliases are registered before concrete aliases instantiate their
 fields, preserving forward generic references across module parts. Type-expression
 marking descends through expression wrappers, and generic array/tuple validation
