@@ -30,12 +30,13 @@ on "linux" {
     }
 
     -- Restores the saved Linux terminal mode.
-    term_raw_mode_disable_impl :: fn () {
+    term_raw_mode_disable_impl :: fn (discard_input: bool = no) {
         on !term_original_mode_saved => return
 
         restored := term_original_mode
         restored.oflag |= (OPOST | ONLCR).as(u32)
-        _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^restored).as(^void))
+        request := on discard_input { yes => TCSETSF else => TCSETS }
+        _       := sys_ioctl(STDIN_FILENO, request.as(u64), (^restored).as(^void))
 
         term_original_mode_saved = no
     }
@@ -148,6 +149,41 @@ on "linux" {
 
     term_keyboard_protocol_disable_impl :: fn () {
         term_print("\x1b[<u")
+    }
+
+    -- Reporting modes have been disabled, but their last reports can still be
+    -- queued or in flight. Wait for 25 ms of quiet, bounded by 100 ms overall,
+    -- before atomically flushing unread input and restoring the saved mode.
+    term_shutdown_input_impl :: fn () {
+        on !term_original_mode_saved => return
+        current : Termios
+        on sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void)) == 0 => {
+            current.cc[VMIN] = 0
+            current.cc[VTIME] = 0
+            _                  := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^current).as(^void))
+            started            := now()
+            buffer  : [1024]u8
+
+            for {
+                spent := elapsed(started, now()).to_ms()
+                on spent >= 100 => break
+                remaining := 100 - spent
+                wait      := on remaining < 25 { yes => remaining else => 25 }
+                pollfd    := PollFd {
+                    fd      : STDIN_FILENO
+                    events  : POLLIN.as(i16)
+                    revents : 0
+                }
+                ready     := sys_poll(^pollfd, 1, wait.as(i32))
+
+                on ready == -EINTR => again
+                on ready <= 0 || (pollfd.revents & POLLIN.as(i16)) == 0 => break
+                read := sys_read(STDIN_FILENO, ^buffer, 1024)
+                on read == -EINTR => again
+                on read <= 0 => break
+            }
+        }
+        term_raw_mode_disable_impl(discard_input = yes)
     }
 
     term_wait_for_input_impl :: fn (timeout_ms: i32) {
@@ -744,7 +780,7 @@ term_run_step :: fn () -> bool {
         term_mouse_input_enable(no)
         term_keyboard_protocol_disable_impl()
         term_alternate_screen_enable(no)
-        term_raw_mode_enable(no)
+        term_shutdown_input_impl()
         term_arena_done()
         term_keyboard_clear()
         term_initialised        = no

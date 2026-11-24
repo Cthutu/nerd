@@ -1,0 +1,16 @@
+use std.term
+
+input :: fn (event: TermInput) {
+    for item in event.events {
+        on item^ {
+            Character(rune) => { on rune == 'q'.as(u32) => term_done() }
+            else => {}
+        }
+    }
+}
+
+main :: fn () {
+    term_init(min_width = 1, min_height = 1)
+    term_hook_input(input)
+    term_run()
+}

@@ -466,6 +466,8 @@ on "linux" {
     pub TCGETS :: 0x5401
     -- Linux terminal request for reading terminal
     -- attributes.
+    pub TCSETSF :: 0x5404  -- Apply attributes after output drains, discarding
+    --     unread input.
     pub TCSETS :: 0x5402
     -- Linux terminal request for writing terminal
     -- attributes immediately.

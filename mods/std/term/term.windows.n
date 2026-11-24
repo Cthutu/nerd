@@ -492,6 +492,10 @@ on "windows" {
         on !term_input_is_console() => term_print("\x1b[<u")
     }
 
+    term_shutdown_input_impl :: fn () {
+        term_raw_mode_disable_impl()
+    }
+
     term_wait_for_input_impl :: fn (timeout_ms: i32) {
         input := GetStdHandle(STD_INPUT_HANDLE)
         wait_ms := on timeout_ms < 0

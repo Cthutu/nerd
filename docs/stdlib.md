@@ -331,6 +331,14 @@ the configured minimum size and discards key/mouse edge state, while preserving
 current key-down state. `ContinueSimulation` keeps simulation hooks running but
 still lets `std.term` own presentation until the terminal is large enough again.
 
+On Linux, `term_done` cleanup disables keyboard/mouse reporting before restoring
+terminal input. It discards queued reports and waits for 25 ms of input quiet,
+with a 100 ms drain bound under continuous input, then uses `TCSETSF` to restore
+the saved mode and flush unread bytes atomically. This covers reports already in
+flight during teardown without adding a shutdown query. Fresh input after mode
+restoration belongs to the next reader. Explicit `term_raw_mode_enable(no)` retains
+its immediate mode-restoration behaviour.
+
 ### `std.frame`, `std.gfx`, and `std.opengl`
 
 `std.frame` owns native windows, input/events, frame lifecycle, fullscreen

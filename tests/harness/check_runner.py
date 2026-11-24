@@ -48,7 +48,7 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(len(stages), len({s.name for s in stages}))
         for profile in ['debug', 'release']:
             scripts = {s.command[1] for s in stages if s.profile == profile and len(s.command) > 1}
-            for name in ['docs', 'frame', 'profile', 'jobs', 'front_threads', 'toolchain', 'install',
+            for name in ['docs', 'term', 'frame', 'profile', 'jobs', 'front_threads', 'toolchain', 'install',
                          'format_workflow', 'cgen', 'build_settings', 'windows_stdio',
                          'std_thread_sync', 'raptor', 'std_system', 'render_threads', 'expression_depth']:
                 self.assertIn(f'build/test_{name}.py', scripts)

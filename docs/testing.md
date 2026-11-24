@@ -430,3 +430,14 @@ and LSP failures, truncated groups and release metadata. Both common gates run
 it. The [feature inventory](test-features.md) records taxonomy, teaching-doc gaps
 and the snapshot review. Historical audits and raw validation outputs are
 available through immutable archive links, not regenerated tracked reports.
+
+
+### Terminal shutdown PTYs
+
+`build/test_term.py` runs `tests/term/lifecycle.n` through LLVM and C in debug and
+release modes on Linux. It retains the PTY slave after the application exits,
+checking that queued key-release, mouse and negotiation reports do not prefix
+fresh shell input. A delayed report after reporting is disabled exercises the
+in-flight case; continuous reports verify bounded shutdown. Each case checks
+saved terminal attributes and reporting/alternate-screen teardown. The default
+gate includes this stage for both compiler profiles.

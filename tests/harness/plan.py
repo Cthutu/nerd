@@ -70,6 +70,7 @@ def make_plan(root=ROOT, profile='all', *, network=False, nexus=False,
                 [python, 'build/test_libc_free.py', '--nerd', compiler], needs)
         add('doctor-' + mode, 'toolchain', mode, [compiler, 'doctor'], needs)
         add('docs-' + mode, 'docs', mode, [python, 'build/test_docs.py', '--nerd', compiler], needs)
+        add('term-' + mode, 'term', mode, [python, 'build/test_term.py', '--nerd', compiler], needs)
         add('frame-' + mode, 'frame', mode, [python, 'build/test_frame.py', '--nerd', compiler], needs)
         add('stdlib-capabilities-' + mode, 'capabilities', mode,
             [python, 'tests/stdlib-capabilities/check_capabilities.py', '--compiler', compiler], needs)
