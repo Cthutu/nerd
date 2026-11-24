@@ -27,6 +27,10 @@ message it uses a default assertion message. The condition must be `bool`;
 extract an optional or result, or turn its truthiness into a boolean, before
 asserting about it.
 
+The condition and explicit message may use value-producing `on` expressions,
+including inside loops. Each operand is evaluated once; discarding the loop
+result does not discard these values.
+
 The message after the comma must be a `string`. Interpolation can include
 values that help explain a failure:
 

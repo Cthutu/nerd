@@ -16306,7 +16306,8 @@ internal bool llvm_emit_assert(LlvmFunctionContext* ctx,
         return true;
     }
 
-    LlvmValue condition = llvm_emit_expr(ctx, function, stmt->expr_index);
+    LlvmValue condition =
+        llvm_emit_required_expr(ctx, function, stmt->expr_index);
     if (!condition.ok) {
         return false;
     }
@@ -16319,7 +16320,7 @@ internal bool llvm_emit_assert(LlvmFunctionContext* ctx,
     string message_value = {0};
     if (stmt->target_expr_index != U32_MAX) {
         LlvmValue message =
-            llvm_emit_expr(ctx, function, stmt->target_expr_index);
+            llvm_emit_required_expr(ctx, function, stmt->target_expr_index);
         if (!message.ok) {
             return false;
         }

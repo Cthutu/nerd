@@ -75,3 +75,33 @@ define internal void @fn.0() {
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+=== case: assertion-values-inside-discarded-loops ===
+-- A loop statement discards the loop result, but not its assertions' operands.
+ONE :: 1.as(u32)
+TWO :: 2.as(u32)
+Item :: plex { x usize paper u32 }
+calls : usize = 0
+
+mark :: fn (value: string) -> string {
+    calls += 1
+    return value
+}
+
+main :: fn () {
+    items := [Item { x: 1 paper: ONE }, Item { x: 2 paper: TWO }]
+    for item in items {
+        assert item.paper == (on item.x < 2 { yes => ONE else => TWO }),
+            (on item.x < 2 { yes => mark("first") else => mark("second") })
+        assert (on item.x { 1 => yes 2 => yes else => no })
+    }
+    assert calls == 2
+    prn($"assertion values {calls}")
+}
+¬
+0
+¬
+assertion values 2
+
+¬
+¬

@@ -19,6 +19,13 @@ and selects default initialisers without retaining a local pointer across type
 resolution. `local-inference-growth.t` exercises nested method inference while
 instantiation grows the local table, including distinct concrete specialisations.
 
+LLVM assertion lowering evaluates both condition and explicit message with the
+required-value emitter. An enclosing discarded loop or expression must not
+propagate its discard flag into nested `on`/block operands and suppress their
+values. The assertion still evaluates its operands once and restores the caller's
+discard context. `assertions.t` covers conditional operands and messages inside
+loop statements across both backends.
+
 Numeric binary inference revisits an untyped operand with its concrete sibling's
 numeric type before lowering. This constrains every nested arithmetic node and
 validates literal ranges rather than changing only the result-type comparison.
