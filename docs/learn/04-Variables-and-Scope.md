@@ -111,6 +111,11 @@ main :: fn () -> i32 {
 }
 ```
 
+Compound targets can also be indexed elements of mutable arrays, slices,
+dynamic arrays and pointers, including arrays reached through plex fields:
+`state.values[state.index] += 1`. The ordinary mutability and numeric type rules
+still apply.
+
 This returns `42`. For a simple variable, `total += 11` has the same effect as
 `total = total + 11`.
 

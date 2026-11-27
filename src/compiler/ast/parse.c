@@ -82,6 +82,7 @@ internal bool ast_node_can_be_assignment_target(const AstParseState* state,
     case AK_TupleField:
     case AK_Field:
     case AK_Deref:
+    case AK_Index:
         return true;
     case AK_Expression:
         return ast_node_can_be_assignment_target(state, node->a);
