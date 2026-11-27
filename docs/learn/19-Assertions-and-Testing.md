@@ -160,3 +160,8 @@ A successful ordinary check does not establish that test-only declarations and
 bodies pass. Run the test command after editing them. Keep tests independent
 of execution order and release any resources they allocate according to the
 same ownership rules as ordinary code.
+
+Test discovery treats single-quoted packed integers as literals, including escaped
+quotes and braces. Characters such as `'"'`, `'{'` and `'}'` do not hide later
+tests or change test-body boundaries. The same rule applies when replacing an
+ordinary `main` with the generated test entry point.

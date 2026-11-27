@@ -72,10 +72,10 @@ internal void source_test_skip_line_comment(string source, usize* offset)
     }
 }
 
-internal bool source_test_skip_string(string source, usize* offset)
+internal bool source_test_skip_quoted(string source, usize* offset, u8 quote)
 {
-    ASSERT(*offset < source.count && source.data[*offset] == '"',
-           "Expected string start");
+    ASSERT(*offset < source.count && source.data[*offset] == quote,
+           "Expected quoted literal start");
 
     *offset += 1;
     while (*offset < source.count) {
@@ -85,11 +85,16 @@ internal bool source_test_skip_string(string source, usize* offset)
             continue;
         }
         *offset += 1;
-        if (ch == '"') {
+        if (ch == quote) {
             return true;
         }
     }
     return false;
+}
+
+internal bool source_test_skip_string(string source, usize* offset)
+{
+    return source_test_skip_quoted(source, offset, '"');
 }
 
 internal bool source_test_skip_c_string(string source, usize* offset)
@@ -181,6 +186,13 @@ internal bool source_test_find_body(string source,
         }
 
         u8 ch = source.data[*offset];
+        if (ch == '\'') {
+            if (!source_test_skip_quoted(source, offset, ch)) {
+                return error_runtime(
+                    "Unterminated packed integer in test body");
+            }
+            continue;
+        }
         if (ch == '"') {
             if (!source_test_skip_string(source, offset)) {
                 return error_runtime("Unterminated string in test body");
@@ -273,6 +285,13 @@ internal bool source_test_discover_range(Arena*                arena,
         }
 
         u8 ch = source.data[offset];
+        if (ch == '\'') {
+            if (!source_test_skip_quoted(source, &offset, ch)) {
+                return error_runtime(
+                    "Unterminated packed integer while finding tests");
+            }
+            continue;
+        }
         if (ch == '"') {
             if (!source_test_skip_string(source, &offset)) {
                 return error_runtime("Unterminated string while finding tests");
@@ -458,6 +477,12 @@ internal SourceTestMainDecl source_test_find_main_binding(string source)
         }
 
         u8 ch = source.data[offset];
+        if (ch == '\'') {
+            if (!source_test_skip_quoted(source, &offset, ch)) {
+                break;
+            }
+            continue;
+        }
         if (ch == '"') {
             if (!source_test_skip_string(source, &offset)) {
                 break;
