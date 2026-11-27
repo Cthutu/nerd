@@ -2006,3 +2006,8 @@ arguments, whose values must derive from the new call's arguments. Without that
 boundary, recursive slice arguments could replace caller parameters with SSA
 values defined only on a conditional path, failing LLVM dominance verification
 or returning the wrong original parameter after recursion.
+
+Array indexing recognises the built-in `box[T]` constructor only when the
+indexed target is a symbol reference. For an AST field node, `a` is the base
+expression index and `b` is the field symbol; never interpret its base as an
+interned symbol handle. Ordinary array-field indexing remains a value operation.

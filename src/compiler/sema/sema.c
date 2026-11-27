@@ -24902,7 +24902,7 @@ validate_type:
                     return false;
                 }
             }
-            if (target->kind == AK_SymbolRef || target->kind == AK_Field) {
+            if (target->kind == AK_SymbolRef) {
                 if (string_eq(lex_symbol(lexer, target->a), s("box"))) {
                     u32 item_type = sema_no_type();
                     if (!sema_resolve_type_node(
