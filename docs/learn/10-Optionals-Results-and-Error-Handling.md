@@ -18,6 +18,11 @@ stack. A caller chooses whether to inspect an outcome, supply a default, or
 return the failure to its own caller. As before, examples either print strings
 or return integer exit statuses.
 
+Wrappers can be nested. A function returning `?string\string` can return a
+string for success with a present value, `nil` for success with no value, or
+`"failed"!` for an error. Expected wrapper construction applies to the inner
+payload as well as the outer result.
+
 ## Optional values
 
 Write `?T` when absence is a normal possibility. Where an optional is expected,

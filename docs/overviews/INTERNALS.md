@@ -56,7 +56,10 @@ retagging payload scalars as aggregates. LLVM packs named enum payloads through
 logical record-field insertion, preserving alignment-based storage reordering and
 packed/embedded field handling rather than assuming declaration indices are LLVM
 aggregate indices. `optional-record-fields.t` covers literals, updates, optional
-numbers/strings and result payloads across both backends.
+numbers/strings and result payloads across both backends. Wrapper construction
+recursively lowers the selected payload type; a result containing an optional
+constructs both layers, including a successful absent optional for `nil`.
+`nested-optional-result.t` covers returns, forwarding and local construction.
 
 The usage-constraint table also records result types for empty contextual casts.
 Local aliases, arithmetic and tuple projections share those constraints without

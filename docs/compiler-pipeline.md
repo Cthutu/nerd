@@ -206,6 +206,12 @@ uses the semantic output to produce:
 - structured blocks, loops, `on`, `defer`, and expression-valued control flow
 - explicit string-builder operations for interpolated strings
 
+Expected optional/result construction recursively lowers each selected payload
+before constructing its enclosing variant. For example, an optional success
+inside a result must be materialised as an optional before the result is built;
+`nil` has no payload only at the optional absent variant. Both backends consume
+these explicit nested HIR constructors.
+
 HIR is the semantically checked middle layer. It is intentionally target-agnostic
 at the language level: functions, types, values, imports, exports, locals, and
 control-flow constructs are represented as compiler facts rather than as C or

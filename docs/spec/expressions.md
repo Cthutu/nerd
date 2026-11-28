@@ -274,6 +274,14 @@ result-returning function. The enclosing return channel must be compatible.
 its failure handler, while implicitly yielding success. The subject is evaluated
 once and the original failure is forwarded. For an optional, omit the error
 binder; explicit control-flow exits in the handler override propagation.
+
+Expected optional/result construction applies recursively to the selected
+payload. For example, returning a string from `?string\string` constructs a
+successful result containing a present optional; returning `nil` constructs a
+successful result containing an absent optional. An injected error remains in
+the outer result's error channel. This also applies to locals and other
+expressions with an expected wrapper type.
+
 ## Compound Function Selection
 
 Calling a compound function filters its flattened concrete members using the

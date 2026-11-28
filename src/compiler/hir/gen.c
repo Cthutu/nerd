@@ -1313,25 +1313,31 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
             u32 symbol_handle =
                 sema->type_param_symbols[expected->first_param_type +
                                          variant_index];
-            u32 callee       = hir_add_expr(hir,
-                                            (HirExpr){
-                                                .kind          = HIR_EXPR_LocalRef,
-                                                .type_index    = expected_type,
-                                                .symbol_handle = symbol_handle,
-                                                .local_index   = sema_no_local(),
-                                                .ref_kind      = HIR_REF_None,
-                                                .ref_index     = hir_no_index(),
-                                            });
-            u32 arg_count    = is_nil ? 0 : 1;
-            u32 payload_expr = hir_no_index();
-            if (!is_nil) {
+            u32  callee       = hir_add_expr(hir,
+                                             (HirExpr){
+                                                 .kind          = HIR_EXPR_LocalRef,
+                                                 .type_index    = expected_type,
+                                                 .symbol_handle = symbol_handle,
+                                                 .local_index   = sema_no_local(),
+                                                 .ref_kind      = HIR_REF_None,
+                                                 .ref_index     = hir_no_index(),
+                                             });
+            // A result may contain an absent optional as its success payload.
+            // Only the optional's absent variant has no argument of its own.
+            bool has_payload  = !is_nil || !(expected->flags & STF_Optional);
+            u32  arg_count    = has_payload ? 1 : 0;
+            u32  payload_expr = hir_no_index();
+            if (has_payload) {
                 u32 payload_node =
                     is_error ? ast->nodes[unwrapped].a : node_index;
-                payload_expr =
-                    hir_lower_expr(hir, lexer, ast, sema, payload_node);
+                u32 payload_type =
+                    sema->type_param_types[expected->first_param_type +
+                                           variant_index];
+                payload_expr = hir_lower_expr_with_expected(
+                    hir, lexer, ast, sema, payload_node, payload_type);
             }
             u32 first_arg = (u32)array_count(hir->call_args);
-            if (!is_nil) {
+            if (has_payload) {
                 array_push(hir->call_args,
                            (HirCallArg){
                                .expr_index    = payload_expr,
